@@ -15,9 +15,11 @@ headers = {
 
 
 def download_image(img_path, img_link):
+    if os.path.exists(img_path):
+        return
     while True:
         try:
-            time.sleep(random.random() / 50)
+            time.sleep(random.random() / 10)
             response = requests.get(img_link, headers=headers, timeout=5)
             if response.status_code == 200:
                 file = open(img_path, "wb")
@@ -50,7 +52,7 @@ if __name__ == "__main__":
     else:
         broken_url = []
     broken_url = set(broken_url)
-    downloaded = set(torchutils.files.scan_files(args.image_dir, recursive=True))
+    # downloaded = set(torchutils.files.scan_files(args.image_dir, recursive=True))
     todownload = []
     item_set = set()
     with open(args.txt_file) as f:
@@ -64,15 +66,14 @@ if __name__ == "__main__":
                 url = "http://" + url.split("//")[-1]
             suffix = url.split(".")[-1].lower()
             if suffix not in ["jpg", "png", "jpeg"]:
-                print(suffix, url)
                 suffix = "jpg"
             img_path = os.path.join(args.image_dir, f"{item_id}.{suffix}")
-            if img_path in downloaded or url in broken_url:
+            if url in broken_url:
                 continue
             todownload.append((img_path, url))
-    print("Number of all items: {:,}".format(len(todownload) + len(downloaded) + len(broken_url)))
+    print("Number of all items: {:,}".format(len(todownload) + len(broken_url)))
     print("Number of items to download: {:,}".format(len(todownload)))
-    print("Number of items downloaded: {:,}".format(len(downloaded)))
+    # print("Number of items downloaded: {:,}".format(len(downloaded)))
     print("Number of broken items: {:,}".format(len(broken_url)))
 
     pbar = tqdm(total=len(todownload))
