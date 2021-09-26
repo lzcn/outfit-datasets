@@ -6,7 +6,6 @@ import time
 from multiprocessing import Pool
 import random
 import requests
-import torchutils
 from tqdm.auto import tqdm
 
 headers = {
@@ -26,7 +25,7 @@ def download_image(img_path, img_link):
                 file.write(response.content)
                 file.close()
             else:
-                with open("failed.txt", "a") as f:
+                with open("processed/broken_url.txt", "a") as f:
                     f.write(f"{img_link}\n")
                 tqdm.write(f"Failed. {img_link}")
             break
@@ -45,8 +44,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # load urls
     print("Reading urls")
-    if os.path.exists("failed.txt"):
-        with open("failed.txt") as f:
+    if os.path.exists("processed/broken_url.txt"):
+        with open("processed/broken_url.txt") as f:
             broken_url = f.read()
             broken_url = broken_url.split("\n")
     else:
