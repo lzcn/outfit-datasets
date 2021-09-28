@@ -18,12 +18,12 @@ sys.path.insert(0, os.path.abspath("../"))
 
 # -- Project information -----------------------------------------------------
 
-project = "Fashion Datasets"
+project = "Outfit Datasets"
 copyright = "2021, Zhi Lu"
 author = "Zhi Lu"
 
 # The full version, including alpha/beta/rc tags
-# release = "0.0.1"
+release = "0.0.1"
 
 
 # -- General configuration ---------------------------------------------------
@@ -41,6 +41,7 @@ extensions = [
     "sphinx.ext.napoleon",
     "sphinx.ext.viewcode",
     "sphinx.ext.githubpages",
+    "sphinx_copybutton",
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -49,7 +50,7 @@ templates_path = ["_templates"]
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
+exclude_patterns = ["_build", "Thumbs.db", ".DS_Store", ".AppleDouble"]
 
 
 # -- Options for HTML output -------------------------------------------------
@@ -57,17 +58,14 @@ exclude_patterns = ["_build", "Thumbs.db", ".DS_Store"]
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme = "sphinx_book_theme"  # "sphinxdoc"
+html_theme = "furo"
 
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
-html_theme_options = {
-    "repository_url": "https://github.com/lzcn/fashion-datasets",
-    "use_repository_button": True,
-}
+html_title = "Outfit Datasets"
 
 
 # -- Options for intersphinx extension ---------------------------------------
@@ -79,6 +77,7 @@ intersphinx_mapping = {
     "numpy": ("http://docs.scipy.org/doc/numpy/", None),
     "ignite": ("https://pytorch.org/ignite/master", None),
     "torch": ("https://pytorch.org/docs/stable", None),
+    "torchutils": ("https://torchutils.readthedocs.io/en/latest/", None),
 }
 
 

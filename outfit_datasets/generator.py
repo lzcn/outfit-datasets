@@ -1,30 +1,33 @@
 import logging
-from abc import ABCMeta, abstractmethod
-
+from typing import Any, Callable
 import numpy as np
 
 from . import utils
 
 
-class Generator(metaclass=ABCMeta):
-    """Generator interface."""
+def _run_unimplemented(self, *input: Any) -> None:
+    r"""Generate outfit tuples.
 
-    def __init__(self, *args, **kwargs):
+    Should be overridden by all subclasses.
+    """
+    raise NotImplementedError
+
+
+class Generator:
+    r"""Base class for all generator.
+    """
+
+    run: Callable[..., Any] = _run_unimplemented
+
+    def __init__(self):
         self.logger = logging.getLogger(__name__)
 
     def __call__(self, data: np.ndarray = None) -> np.ndarray:
-        """Generate outfit tuples.
-
-        Args:
-            data (np.ndarray, optional): positive tuples. Defaults to None.
-
-        Returns:
-            np.ndarray: negative tuples
-        """
         self.logger.info(f"Generating tuples with {self} mode.")
         return self.run(data)
 
     def extra_repr(self) -> str:
+        """Set the extra representation."""
         return ""
 
     def __repr__(self):
@@ -34,26 +37,34 @@ class Generator(metaclass=ABCMeta):
 class FixGenerator(Generator):
     """Always return registered tuples."""
 
-    def __init__(self, data: np.ndarray = None, *args, **kwargs):
+    def __init__(self, data: np.ndarray = None):
         super().__init__()
         self.data = data
 
-    def run(self, data: np.ndarray = None) -> np.ndarray:
+    def run(self, *input: Any) -> np.ndarray:
+        """Fixed generator.
+
+        Return registed tuples.
+        """
         return self.data
 
 
 class IdentityGenerator(Generator):
-    def __init__(self, *args, **kwargs):
+    def __init__(self):
         super().__init__()
 
     def run(self, data: np.ndarray = None) -> np.ndarray:
+        """Identity generator.
+
+        Retrun input tuples
+        """
         return data
 
 
 class ResampleGenerator(Generator):
     """Resample subset from outfits."""
 
-    def __init__(self, ratio: float = 0.3, *args, **kwargs):
+    def __init__(self, ratio: float = 0.3):
         super().__init__()
         self.ratio = ratio
 
@@ -69,12 +80,20 @@ class ResampleGenerator(Generator):
 
 
 class RandomMixGenerator(Generator):
-    def __init__(self, ratio: int = 1, type_aware: bool = False, *args, **kwargs):
+    def __init__(self, ratio: int = 1, type_aware: bool = False):
         super().__init__()
         self.type_aware = type_aware
         self.ratio = ratio
 
     def run(self, data: np.ndarray) -> np.ndarray:
+        """Random mixing items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
         item_list, all_items = utils.get_item_list(data)
         self.logger.info("Sampling x%d outfits from set %s", self.ratio, str(list(map(len, item_list))))
         pos_uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
@@ -101,15 +120,23 @@ class RandomMixGenerator(Generator):
 
 
 class RandomReplaceGenerator(Generator):
-    """Replace n item in outfit."""
+    r"""Replace :math:`n` item in outfit."""
 
-    def __init__(self, ratio=1, num_replace=1, type_aware=False, *args, **kwargs):
+    def __init__(self, ratio=1, num_replace=1, type_aware=False):
         super().__init__()
         self.ratio = ratio
         self.num_replace = num_replace
         self.type_aware = type_aware
 
-    def __call__(self, data: np.ndarray) -> np.ndarray:
+    def run(self, data: np.ndarray) -> np.ndarray:
+        """Randomly replace :math:`n` items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
         self.logger.info(
             "Generating tuples with RandomReplace(ratio={}, num_replace={}, type_aware={}) mode.".format(
                 self.ratio, self.num_replace, self.type_aware
@@ -145,12 +172,38 @@ class RandomReplaceGenerator(Generator):
         return f"ratio={self.ratio}, num_repalce={self.num_replace}, type_aware={self.type_aware}"
 
 
-def getGenerator(mode, *args, **kwargs) -> Generator:
-    """Get outfit tuple generator."""
-    _factory = {
-        "Fix": FixGenerator,
-        "Identity": IdentityGenerator,
-        "RandomMix": RandomMixGenerator,
-        "RandomReplace": RandomReplaceGenerator,
-    }
-    return _factory[mode](*args, **kwargs)
+def getGenerator(
+    mode: str, data: np.ndarray = None, ratio: float = 1.0, type_aware: bool = False, num_replace: int = 1,
+) -> Generator:
+    r"""Get outfit tuple generator.
+
+    Types of generators:
+
+    - "Fix": return stored tuples.
+    - "Identity": return input.
+    - "RandomMix": reutrn randomly mixed tuples.
+    - "RandomReplace": randomly replace :math:`n` items in outfit.
+
+    Args:
+        mode (str): type of generator
+        data (np.ndarray, optional): positive or negative tuples. Defaults to None.
+        ratio (float, optional): ratio of generated tuples. Defaults to 1.0.
+        type_aware (bool, optional): generate tuples while considering item type.
+            Defaults to False.
+        num_replace (int, optional): number of item replacement. Defaults to 1.
+
+    Returns:
+        [Generator]: generator
+
+    """
+    if mode == "Fix":
+        assert data is not None
+        return FixGenerator(data)
+    elif mode == "Identity":
+        return IdentityGenerator()
+    elif mode == "RandomMix":
+        return RandomMixGenerator(ratio=ratio, type_aware=type_aware)
+    elif mode == "RandomReplace":
+        return RandomReplaceGenerator(raito=ratio, type_aware=type_aware, num_replace=num_replace)
+    else:
+        raise KeyError
