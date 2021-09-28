@@ -1,12 +1,14 @@
 import logging
+import os
 
+import attr
 import numpy as np
 import pandas as pd
 import torchutils
 from torch.utils.data import DataLoader
-import attr
+
 from outfit_datasets.builder import getBuilder
-from outfit_datasets.data_param import DataParam
+from outfit_datasets.data_param import OutfitDataParam
 from outfit_datasets.datum import getDatum
 
 LOGGER = logging.getLogger(__name__)
@@ -22,34 +24,35 @@ class OutfitData(object):
 
     """
 
-    def __init__(self, param: DataParam = None, **kwargs):
-        param = DataParam() if param is None else param
+    def __init__(self, param: OutfitDataParam = None, **kwargs):
+        param = OutfitDataParam() if param is None else param
         param = attr.evolve(param, **kwargs)
+        LOGGER.info("Loading %s data", torchutils.colour(param.phase))
         LOGGER.info(
-            "Loading data (%s) in phase (%s)", torchutils.colour(param.data_set), torchutils.colour(param.phase)
-        )
-        LOGGER.info(
-            "DataLoader configuration: batch size (%s), number of workers (%s)",
+            "DataLoader: batch size (%s), number of workers (%s)",
             torchutils.colour(param.batch_size),
             torchutils.colour(param.num_workers),
         )
         self.num_users = param.num_users
-        self.posi_data = np.array(pd.read_csv(param.posi_fn, dtype=np.int, header=None))
-        print(self.posi_data.shape)
-        self.nega_data = np.array(pd.read_csv(param.nega_fn, dtype=np.int, header=None))
-        print(self.nega_data.shape)
+        self.pos_data = np.array(pd.read_csv(param.pos_fn, dtype=np.int, header=None))
+        if os.path.exists(param.neg_fn):
+            self.neg_data = np.array(pd.read_csv(param.neg_fn, dtype=np.int, header=None))
+            LOGGER.info("Negatives not exists")
+        else:
+            self.neg_data = None
         if param.builder.data_mode == "FITB":
             data = np.array(pd.read_csv(param.fitb_fn, dtype=np.int))
-            self.posi_data = data
-            self.nega_data = None
+            self.pos_data = data
+            self.neg_data = None
             self.num_comparisons = len(data)
             LOGGER.info("Summary for fill-in-the-blank data set")
             LOGGER.info("Number of questions: %s", torchutils.colour(self.num_comparisons))
             LOGGER.info("Number of answers: %s", torchutils.colour(self.param.num_choices))
-
+        else:
+            LOGGER.info("Number of positive outfits: %d", len(self.pos_data))
         self.datum = getDatum(param)
         self.dataset = getBuilder(
-            datum=self.datum, posi_data=self.posi_data, nega_data=self.nega_data, **param.builder.asdict()
+            datum=self.datum, pos_data=self.pos_data, neg_data=self.neg_data, **param.builder.asdict()
         )
         self.dataloader = DataLoader(
             dataset=self.dataset,

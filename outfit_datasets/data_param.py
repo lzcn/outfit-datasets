@@ -8,14 +8,14 @@ from torchutils.param import DataReaderParam, Param
 @attr.s
 class BuilderParam(Param):
     data_mode = attr.ib(default="PairWise")
-    posi_mode = attr.ib(default="Fix")
-    nega_mode = attr.ib(default="RandomMix")
-    posi_param = attr.ib(factory=dict)
-    nega_param = attr.ib(factory=dict)
+    pos_mode = attr.ib(default="Fix")
+    neg_mode = attr.ib(default="RandomMix")
+    pos_param = attr.ib(factory=dict)
+    neg_param = attr.ib(factory=dict)
 
 
 @attr.s
-class DataParam(Param):
+class OutfitDataParam(Param):
     """Configuration class for data loader.
 
     Examples:
@@ -55,8 +55,6 @@ class DataParam(Param):
     phase: str = attr.ib(default="train")
     #: data root
     data_root: str = attr.ib(default="processed", repr=False)
-    #: data set
-    data_set: str = attr.ib(default="original")
     #: readers :class:`DataReaderParam`
     readers: List[DataReaderParam] = attr.ib(factory=list)
     #: builder :class:`BuilderParam`
@@ -75,15 +73,15 @@ class DataParam(Param):
     #: whether to shuffle the dataset
     shuffle: bool = attr.ib(default=None)
     # non-configurable attributes
-    posi_fn: str = attr.ib(init=False)
-    nega_fn: str = attr.ib(init=False)
+    pos_fn: str = attr.ib(init=False)
+    neg_fn: str = attr.ib(init=False)
     fitb_fn: str = attr.ib(init=False)
 
     def __attrs_post_init__(self):
         # reader parameters
         self.readers = [dict()] if len(self.readers) == 0 else self.readers
         self.readers = [DataReaderParam.from_dict(param) for param in self.readers]
-        self.posi_fn = os.path.join(self.data_root, f"{self.data_set}/{self.phase}_pos")
-        self.nega_fn = os.path.join(self.data_root, f"{self.data_set}/{self.phase}_neg")
-        self.fitb_fn = os.path.join(self.data_root, f"{self.data_set}/{self.phase}_fitb")
-        self.item_list_fn = os.path.join(self.data_root, f"{self.data_set}/items.json")
+        self.pos_fn = os.path.join(self.data_root, f"{self.phase}_pos")
+        self.neg_fn = os.path.join(self.data_root, f"{self.phase}_neg")
+        self.fitb_fn = os.path.join(self.data_root, f"{self.phase}_fitb")
+        self.item_list_fn = os.path.join(self.data_root, "items.json")

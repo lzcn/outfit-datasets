@@ -5,7 +5,7 @@ import torch
 import torchutils
 from torchutils.data import DataReader, getReader
 
-from outfit_datasets.data_param import DataParam
+from outfit_datasets.data_param import OutfitDataParam
 
 
 class Datum(object):
@@ -37,7 +37,7 @@ class Datum(object):
         """
         keys = []
         max_size = max(max_size, len(item_ids))
-        for item, cate in item_ids, item_types:
+        for item, cate in zip(item_ids, item_types):
             if cate == -1:
                 continue
             else:
@@ -45,6 +45,7 @@ class Datum(object):
                 keys.append(key)
         while len(keys) < max_size:
             keys.append(keys[-1])
+        return keys
 
     def get_item(self, item_id: int, item_type: int = None) -> torch.Tensor:
         r"""Get the data of single item.
@@ -75,7 +76,7 @@ class Datum(object):
         return data
 
 
-def getDatum(param: DataParam) -> List[Datum]:
+def getDatum(param: OutfitDataParam) -> List[Datum]:
     """Datum factory.
 
     Args:
