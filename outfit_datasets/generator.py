@@ -94,12 +94,14 @@ class RandomMixGenerator(Generator):
         Returns:
             np.ndarray: negative tuples
         """
-        item_list, all_items = utils.get_item_list(data)
+        item_list = utils.get_item_list(data)
+        num_types = utils.infer_num_type(data)
+        max_items = utils.infer_max_size(data)
         self.logger.info("Sampling x%d outfits from set %s", self.ratio, str(list(map(len, item_list))))
         pos_uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         neg_uids = pos_uids.repeat(self.ratio, axis=0).reshape((-1, 1))
         neg_sizes = pos_sizes.repeat(self.ratio, axis=0).reshape((-1, 1))
-        neg_types = pos_types.repeat(self.ratio, axis=0)
+        neg_types = []
         neg_items = []
         pos_set = set(map(tuple, pos_items))
         for item_types in pos_types:
@@ -107,12 +109,16 @@ class RandomMixGenerator(Generator):
             while n_sampled < self.ratio:
                 if self.type_aware:
                     sampled = [np.random.choice(item_list[i]) for i in item_types]
+                    neg_types.append(item_types)
                 else:
-                    sampled = [np.random.choice(all_items) for _ in item_types]
+                    sampled_type = np.random.randint(num_types, size=max_items)
+                    sampled = [np.random.choice(item_list[i]) for i in sampled_type]
+                    neg_types.append(sampled_type)
                 if tuple(sampled) not in pos_set:
                     n_sampled += 1
                     neg_items.append(sampled)
         neg_items = np.array(neg_items)
+        neg_types = np.array(neg_types)
         return np.hstack([neg_uids, neg_sizes, neg_items, neg_types])
 
     def extra_repr(self) -> str:
@@ -142,11 +148,13 @@ class RandomReplaceGenerator(Generator):
                 self.ratio, self.num_replace, self.type_aware
             )
         )
-        data = data.repeat(self.ratio, axis=0)
+        data = data.copy().repeat(self.ratio, axis=0)
         uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
-        item_list, all_items = utils.get_item_list(data)
+        item_list = utils.get_item_list(data)
+        num_types = utils.infer_num_type(data)
         pos_set = set(map(tuple, pos_items))
         neg_items = []
+        neg_types = []
         for size, items, types in zip(pos_sizes, pos_items, pos_types):
             num_replace = min(size, self.num_replace)
             replace_index = np.random.choice(size, num_replace, replace=False)
@@ -158,14 +166,19 @@ class RandomReplaceGenerator(Generator):
                     sampled_item = target_item
                     while sampled_item == target_item:
                         if self.type_aware:
+                            sampled_type = target_type
                             sampled_item = np.random.choice(item_list[target_type])
                         else:
-                            sampled_item = np.random.choice(all_items)
-                    # replace item
+                            sampled_type = np.random.randint(num_types)
+                            sampled_item = np.random.choice(item_list[sampled_type])
+                    # replace item and type
                     items[idx] = sampled_item
+                    types[idx] = sampled_type
             neg_items.append(items)
+            neg_types.append(types)
         neg_items = np.array(neg_items)
-        neg_data = np.hstack((uids.reshape((-1, 1)), pos_sizes.reshape((-1, 1)), neg_items, pos_types))
+        neg_types = np.array(neg_types)
+        neg_data = np.hstack((uids.reshape((-1, 1)), pos_sizes.reshape((-1, 1)), neg_items, neg_types))
         return neg_data
 
     def extra_repr(self) -> str:

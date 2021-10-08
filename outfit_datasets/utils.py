@@ -63,16 +63,12 @@ def get_item_list(data: np.ndarray) -> List[np.ndarray]:
     """
     _, _, item_ids, item_types = split_tuple(data)
     num_list = (item_types.flatten()).max() + 2
-    all_item = set()
     item_set = [set() for _ in range(num_list)]
     for idxs, types in zip(item_ids, item_types):
         for idx, c in zip(idxs, types):
             item_set[c].add(idx)
-            all_item.add(idx)
-    all_item.discard(-1)
-    all_item = np.array(list(all_item))
     item_list = [np.array(list(s)) for s in item_set]
-    return item_list, all_item
+    return item_list
 
 
 def rearrange(items, types) -> List[list]:
