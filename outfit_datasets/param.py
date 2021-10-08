@@ -8,7 +8,7 @@ from torchutils.param import DataReaderParam, Param
 @attr.s
 class OutfitDataParam(Param):
     #: dataset format
-    data_mode = attr.ib(default="PairWise")
+    data_mode = attr.ib(default="PairwiseOutfit")
     #: positive tuples generation mode
     pos_mode = attr.ib(default="Fix")
     #: negative tuples generation mode
@@ -59,7 +59,7 @@ class OutfitLoaderParam(Param):
     #: data split of ["train", "valid", "test"]
     phase: str = attr.ib(default="train")
     #: data root, where tuples files are saved
-    data_root: str = attr.ib(default="processed", repr=False)
+    data_root: str = attr.ib(default="polyvore-u/processed/original/tuples_32", repr=False)
     #: readers :class:`DataReaderParam`
     readers: List[DataReaderParam] = attr.ib(factory=list)
     #: dataset :class:`OutfitDataParam`
