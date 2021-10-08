@@ -6,16 +6,21 @@ from torchutils.param import DataReaderParam, Param
 
 
 @attr.s
-class BuilderParam(Param):
+class OutfitDataParam(Param):
+    #: dataset format
     data_mode = attr.ib(default="PairWise")
+    #: positive tuples generation mode
     pos_mode = attr.ib(default="Fix")
+    #: negative tuples generation mode
     neg_mode = attr.ib(default="RandomMix")
+    #: configuration for positive tuples generation
     pos_param = attr.ib(factory=dict)
+    #: configuration for negative tuples generation
     neg_param = attr.ib(factory=dict)
 
 
 @attr.s
-class OutfitDataParam(Param):
+class OutfitLoaderParam(Param):
     """Configuration class for data loader.
 
     Examples:
@@ -33,7 +38,7 @@ class OutfitDataParam(Param):
                         "path": "data/maryland-polyvore/features/resnet34",
                     },
                 ],
-                "builder": {
+                "dataset": {
                     "data_mode": "PointWise",
                     "posi_mode": "Fix",
                     "nega_mode": "RandomMix",
@@ -53,12 +58,12 @@ class OutfitDataParam(Param):
     # basic configurations
     #: data split of ["train", "valid", "test"]
     phase: str = attr.ib(default="train")
-    #: data root
+    #: data root, where tuples files are saved
     data_root: str = attr.ib(default="processed", repr=False)
     #: readers :class:`DataReaderParam`
     readers: List[DataReaderParam] = attr.ib(factory=list)
-    #: builder :class:`BuilderParam`
-    builder: BuilderParam = attr.ib(factory=dict, converter=BuilderParam.from_dict)
+    #: dataset :class:`OutfitDataParam`
+    dataset: OutfitDataParam = attr.ib(factory=dict, converter=OutfitDataParam.from_dict)
     #: number of item categories
     num_types: int = attr.ib(default=10)
     #: max size of an outfit

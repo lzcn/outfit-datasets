@@ -5,7 +5,7 @@ import torch
 import torchutils
 from torchutils.data import DataReader, getReader
 
-from outfit_datasets.data_param import OutfitDataParam
+from outfit_datasets.param import OutfitLoaderParam
 
 
 class Datum(object):
@@ -76,7 +76,7 @@ class Datum(object):
         return data
 
 
-def getDatum(param: OutfitDataParam) -> List[Datum]:
+def getDatum(param: OutfitLoaderParam) -> List[Datum]:
     """Datum factory.
 
     Args:

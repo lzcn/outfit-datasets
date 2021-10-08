@@ -1,89 +1,85 @@
 import logging
-from abc import ABCMeta, abstractmethod
 from typing import List
 
 import numpy as np
 import torch
 
 from outfit_datasets.datum import Datum
-from outfit_datasets.generator import getGenerator
+from outfit_datasets.generator import Generator, getGenerator
+from outfit_datasets.param import OutfitDataParam
 
 from . import utils
 
+_dataset_registry = {}
 
-class Builder(metaclass=ABCMeta):
-    """Dataset builder.
 
-    The Builder is an abstract factory. Inheritance should implement
-    :meth:`process`, :meth:`__getitem__` and :meth:`__len__`. For non-fixed generators,
-    rebuild data with :meth:`build` before each epoch.
+class BaseOutfitData(object):
+    """Base class for dataset.
+
+    Inheritance should implement :meth:`process`, :meth:`__getitem__` and
+    :meth:`__len__`.
 
     Args:
         datum (Datum): a datum reader instance.
-        pos_data (nnump.array): positive data
-        neg_data (numpy.array, optional): negative data. Defaults to ``None``.
+        pos_data (np.ndarray): the positive tuples.
+        neg_data (np.ndarray, optional): the negative tuples. Defaults to ``None``.
         pos_mode (str, optional): positive generator mode. Defaults to ``"Fix"``.
-        neg_mode (str, optional): negative generator mode. Defaults to ``"RandomOnline"``.
-        pos_param (GeneratorParam, optional): parameters for positve generator. Defaults to ``None``.
-        neg_param (GeneratorParam, optional): parameters for negatie generator. Defaults to ``None``.
+        neg_mode (str, optional): negative generator mode. Defaults to ``"RandomMix"``.
+        pos_param (dict, optional): parameters for positve generator. Defaults to ``None``.
+        neg_param (dict, optional): parameters for negatie generator. Defaults to ``None``.
 
-    Attributes:
-        pos_generator (IGenerator): postive data generator
-        neg_generator (IGenerator): negative data negerator
     """
 
-    def __init__(
-        self,
-        datum: List[Datum],
-        pos_data: np.ndarray,
-        neg_data=None,
-        pos_mode="Fix",
-        neg_mode="RandomOnline",
-        pos_param=None,
-        neg_param=None,
-    ):
+    #: generator for positive tuples
+    pos_generator: Generator = None
+    #: generator for negative tuples
+    neg_generator: Generator = None
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        _dataset_registry[cls.__name__] = cls
+
+    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None):
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.datum = datum
-        # data format [user, size, items, cates]
         self.num_type = utils.infer_num_type(pos_data)
         self.max_size = utils.infer_max_size(pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
-        self.init_data = pos_data
+        self.param = param
         self.pos_data = None
         self.neg_data = None
-        pos_param = pos_param if pos_param else dict()
-        neg_param = neg_param if neg_param else dict()
-        self.pos_generator = getGenerator(pos_mode, pos_data, **pos_param)
-        self.neg_generator = getGenerator(neg_mode, neg_data, **neg_param)
+        self.ini_data = pos_data
+        self.pos_generator = getGenerator(self.param.pos_mode, pos_data, **param.pos_param)
+        self.neg_generator = getGenerator(self.param.neg_mode, neg_data, **param.neg_param)
         self.build()
 
     def build(self):
-        self.logger.info("Generating positive outfits.")
-        self.pos_data = self.pos_generator(self.init_data)
-        self.logger.info("Positive outfits shape: {}".format(self.pos_data.shape))
-        self.logger.info("Generating negative outfits.")
+        self.logger.info("Generating positive tuples.")
+        self.pos_data = self.pos_generator(self.ini_data)
+        self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
+        self.logger.info("Generating negative tuples.")
         self.neg_data = self.neg_generator(self.pos_data)
+        self.logger.info("Nagative tuples shape: {}".format(self.pos_data.shape))
         self.max_size = utils.infer_max_size(self.pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
         self.process()
 
-    @abstractmethod
     def process(self):
-        pass
+        """Prepare tuples for one epoch.
+        """
+        raise NotImplementedError
 
     def names(self, n):
         pass
 
-    @abstractmethod
     def __getitem__(self, n):
-        pass
+        raise NotImplementedError
 
-    @abstractmethod
     def __len__(self):
-        pass
+        raise NotImplementedError
 
 
-class PairwiseOutfitBuilder(Builder):
+class PairwiseOutfit(BaseOutfitData):
     def __getitem__(self, n):
         # in current implementation, pos_types == neg_types
         pos_items, pos_types = self.pos_items[n], self.pos_types[n]
@@ -99,7 +95,7 @@ class PairwiseOutfitBuilder(Builder):
         # item category: shape 2 x n
         cate = torch.stack([torch.tensor(pos_types), torch.tensor(neg_types)], dim=0)
         # outfit size: shape 2
-        size = torch.tensor([self.pos_size[n], self.neg_size[n]])
+        size = torch.tensor([self.pos_sizes[n], self.neg_sizes[n]])
         name = (",".join(self.datum[0].get_key(*pos_args)), ",".join(self.datum[0].get_key(*neg_args)))
         return dict(data=data, name=name, size=size, uidx=self.uidxs[n], cate=cate)
 
@@ -108,8 +104,8 @@ class PairwiseOutfitBuilder(Builder):
 
     def process(self):
         # split tuples
-        pos_uidx, pos_size, pos_items, pos_types = utils.split_tuple(self.pos_data)
-        neg_uidx, neg_size, neg_items, neg_types = utils.split_tuple(self.neg_data)
+        pos_uidx, pos_sizes, pos_items, pos_types = utils.split_tuple(self.pos_data)
+        neg_uidx, neg_sizes, neg_items, neg_types = utils.split_tuple(self.neg_data)
         # check tuples
         ratio = len(self.neg_data) // len(self.pos_data)
         assert (ratio * len(self.pos_data)) == len(self.neg_data)
@@ -117,19 +113,19 @@ class PairwiseOutfitBuilder(Builder):
         # save tuples
         self.uidxs = neg_uidx
         # positive data
-        self.pos_size = pos_size.repeat(ratio, axis=0)
+        self.pos_sizes = pos_sizes.repeat(ratio, axis=0)
         self.pos_items = pos_items.repeat(ratio, axis=0)
         self.pos_types = pos_types.repeat(ratio, axis=0)
         # negative data
-        self.neg_size = neg_size
+        self.neg_sizes = neg_sizes
         self.neg_items = neg_items
         self.neg_types = neg_types
 
 
-class SubsetOutfitBuilder(PairwiseOutfitBuilder):
+class SubsetData(PairwiseOutfit):
     def __getitem__(self, n):
         # in current implementation, pos_types == neg_types
-        item_size = self.pos_size[n]
+        item_size = self.pos_sizes[n]
         index = np.random.randint(item_size)
         sub_items, sub_types = list(self.pos_items[n]), list(self.pos_types[n])
         pos_item = sub_items.pop(index)
@@ -148,7 +144,7 @@ class SubsetOutfitBuilder(PairwiseOutfitBuilder):
         # item category: shape 2 x n
         cate = torch.tensor(sub_types)
         # outfit size: shape 2
-        size = torch.tensor([self.pos_size[n], self.neg_size[n]])
+        size = torch.tensor([self.pos_sizes[n], self.neg_sizes[n]])
         return dict(
             data=sub_data,
             size=size,
@@ -161,7 +157,7 @@ class SubsetOutfitBuilder(PairwiseOutfitBuilder):
         )
 
 
-class PointwiseOutfitBuilder(Builder):
+class PointwiseOutfit(BaseOutfitData):
     def __getitem__(self, n):
         items, types = self.items[n], self.types[n]
         # m x n x data_shape
@@ -186,11 +182,11 @@ class PointwiseOutfitBuilder(Builder):
         self.labels = np.array(([1] * len(self.pos_data) + [0] * len(self.neg_data)))
 
 
-class PositiveOutfitBuilder(PointwiseOutfitBuilder):
+class PositiveOutfit(PointwiseOutfit):
     def build(self):
-        self.logger.info("Generating positive outfits.")
-        self.pos_data = self.pos_generator(self.init_data)
-        self.logger.info("Positive outfits shape: {}".format(self.pos_data.shape))
+        self.logger.info("Generating positive tuples.")
+        self.pos_data = self.pos_generator(self.ini_data)
+        self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
         self.max_size = utils.infer_max_size(self.pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
         self.process()
@@ -200,13 +196,13 @@ class PositiveOutfitBuilder(PointwiseOutfitBuilder):
         self.labels = np.array([1] * len(self.pos_data))
 
 
-class NegativeOutfitBuilder(PointwiseOutfitBuilder):
+class NegativeOutfit(PointwiseOutfit):
     def process(self):
         self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(self.neg_data)
         self.labels = np.array([0] * len(self.neg_data))
 
 
-class SequenceOutfitBuilder(PositiveOutfitBuilder):
+class SequenceOutfit(PositiveOutfit):
     """Sequence builder."""
 
     def __getitem__(self, n):
@@ -224,22 +220,14 @@ class SequenceOutfitBuilder(PositiveOutfitBuilder):
         )
 
 
-class TripletBuilder(Builder):
+class TripletBuilder(BaseOutfitData):
     """Triplet daatset.
 
     Return a triplet (anchor, posi, nega) where posi and nega are from the same category.
     """
 
-    def __init__(self, datum: Datum, pos_data: np.ndarray, neg_data, pos_mode, neg_mode, pos_param, neg_param):
-        super().__init__(
-            datum,
-            pos_data,
-            neg_data=neg_data,
-            pos_mode=pos_mode,
-            neg_mode=neg_mode,
-            pos_param=pos_param,
-            neg_param=neg_param,
-        )
+    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None):
+        super().__init__(datum, param, pos_data, neg_data=neg_data)
         self.logger.info("Building conditions.")
         # build conditions for type-pair
         indx, indy = np.triu_indices(self.num_type, k=1)
@@ -299,33 +287,18 @@ class TripletBuilder(Builder):
         self.cmp_type = cmp_type[valid]
 
 
-def getBuilder(
-    datum,
-    pos_data: np.ndarray,
-    neg_data: np.ndarray = None,
-    pos_mode: str = "Fix",
-    pos_param: dict = None,
-    neg_mode: str = "RandomOnline",
-    neg_param: dict = None,
-    data_mode: str = "PairWise",
-) -> Builder:
-    _factory = {
-        "Positive": PositiveOutfitBuilder,
-        "FITB": PositiveOutfitBuilder,
-        "Negative": NegativeOutfitBuilder,
-        "PointWise": PointwiseOutfitBuilder,
-        "PairWise": PairwiseOutfitBuilder,
-        "Retrieval": PositiveOutfitBuilder,
-        "Sequence": SequenceOutfitBuilder,
-        "Triplet": TripletBuilder,
-        "Subset": SubsetOutfitBuilder,
-    }
-    return _factory[data_mode](
-        datum=datum,
-        pos_data=pos_data,
-        neg_data=neg_data,
-        pos_mode=pos_mode,
-        neg_mode=neg_mode,
-        pos_param=pos_param,
-        neg_param=neg_param,
-    )
+def getOutfitData(
+    datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None
+) -> BaseOutfitData:
+    """[summary]
+
+    Args:
+        datum (List[Datum]): a list of feature readers.
+        param (DataBuilderParam): dataset parameter
+        pos_data (np.ndarray): positive tuples.
+        neg_data (np.ndarray, optional): negative tuples. Defaults to None.
+
+    Returns:
+        BaseData: dataset
+    """
+    return _dataset_registry[param.data_mode](datum, param, pos_data, neg_data)

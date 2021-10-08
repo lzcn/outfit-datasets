@@ -1,20 +1,19 @@
 import logging
 import os
 
-import attr
 import numpy as np
 import pandas as pd
 import torchutils
 from torch.utils.data import DataLoader
 
-from outfit_datasets.builder import getBuilder
-from outfit_datasets.data_param import OutfitDataParam
+from outfit_datasets.dataset import getOutfitData
 from outfit_datasets.datum import getDatum
+from outfit_datasets.param import OutfitLoaderParam
 
 LOGGER = logging.getLogger(__name__)
 
 
-class OutfitData(object):
+class OutfitLoader(object):
     r"""Outfit data class. The class has the following attributes:
 
     - ``dataset``: :class:`torch.utils.data.Dataset`
@@ -24,9 +23,8 @@ class OutfitData(object):
 
     """
 
-    def __init__(self, param: OutfitDataParam = None, **kwargs):
-        param = OutfitDataParam() if param is None else param
-        param = attr.evolve(param, **kwargs)
+    def __init__(self, param: OutfitLoaderParam = None, **kwargs):
+        param = OutfitLoaderParam.evolve(param, **kwargs)
         LOGGER.info("Loading %s data", torchutils.colour(param.phase))
         LOGGER.info(
             "DataLoader: batch size (%s), number of workers (%s)",
@@ -40,7 +38,7 @@ class OutfitData(object):
             LOGGER.info("Negatives not exists")
         else:
             self.neg_data = None
-        if param.builder.data_mode == "FITB":
+        if param.dataset.data_mode == "FITB":
             data = np.array(pd.read_csv(param.fitb_fn, dtype=np.int))
             self.pos_data = data
             self.neg_data = None
@@ -51,8 +49,8 @@ class OutfitData(object):
         else:
             LOGGER.info("Number of positive outfits: %d", len(self.pos_data))
         self.datum = getDatum(param)
-        self.dataset = getBuilder(
-            datum=self.datum, pos_data=self.pos_data, neg_data=self.neg_data, **param.builder.asdict()
+        self.dataset = getOutfitData(
+            datum=self.datum, param=param.dataset, pos_data=self.pos_data, neg_data=self.neg_data
         )
         self.dataloader = DataLoader(
             dataset=self.dataset,
