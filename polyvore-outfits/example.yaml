@@ -1,0 +1,12 @@
+data_root: polyvore-outfits/processed/disjoint
+phase: train
+dataset:
+  data_mode: PairwiseOutfit
+  pos_mode: "Fix"
+  neg_mode: "RandomMix"
+  neg_param: { ratio: 1, type_aware: true }
+readers:
+  [{ reader: TensorLMDB, path: polyvore-outfits/processed/features/resnet34 }]
+batch_size: 4
+num_workers: 1
+shuffle: true
