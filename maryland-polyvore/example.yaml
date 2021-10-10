@@ -1,4 +1,4 @@
-data_root: polyvore-maryland/processed/original
+data_root: maryland-polyvore/processed/original
 phase: train
 dataset:
   data_mode: PairwiseOutfit
@@ -6,7 +6,7 @@ dataset:
   neg_mode: "RandomMix"
   neg_param: { ratio: 1, type_aware: true }
 readers:
-  [{ reader: TensorLMDB, path: polyvore-maryland/processed/features/resnet34 }]
+  [{ reader: TensorLMDB, path: maryland-polyvore/processed/features/resnet34 }]
 batch_size: 4
 num_workers: 1
 shuffle: true
