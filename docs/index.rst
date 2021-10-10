@@ -1,13 +1,15 @@
-Outfit Datasets
-===============
+A Collection of Fashion Outfit Datasets
+=======================================
 
-Outfit data tuple 
------------------
+Introduction
+------------
 
-In personalized outfit recommendation, we have a set of outfits with user information. Technically, the non-personalized outfit recommendation can be seen as personalized outfit recommendation where there is only one user. Suppose that an outfit consists of :math:`n` items from different categories, e.g. :math:`\{x_1, \ldots, x_n\}` and the outfit is liked by the :math:`u`-th user.
+In personalized outfit recommendation, we have a set of outfits with user information.
+Technically, the non-personalized outfit recommendation can be seen as personalized outfit recommendation where there is only one user.
+Suppose that an outfit consists of :math:`n` items from different categories, e.g. :math:`\{x_1, \ldots, x_n\}` and the outfit is liked by the :math:`u`-th user.
 
-Tuple format
-~~~~~~~~~~~~
+Outfit tuple format
+~~~~~~~~~~~~~~~~~~~
 
 We represent each item with an index in the corresponding cateogry and represent an outfit using following format:
 
@@ -27,8 +29,8 @@ where:
 
 To get the information of an item, we need to create a list ``x``, where ``x[c][i]`` is the information for :math:`i`-th item in the :math:`c`-th fashion category.
 
-Tuple Generation
-~~~~~~~~~~~~~~~~
+Negative tuple generation
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 :class:`outfit_datasets.generator.Generator`
 
@@ -37,22 +39,36 @@ Types of generators:
 - "Fix": return stored tuples.
 - "Identity": return input.
 - "RandomMix": reutrn randomly mixed tuples.
-- "RandomReplace": randomly replace :math:`n` items in outfit.
+- "RandomReplace": randomly replace :math:`k` out of :math:`n` items in outfit.
+
+Outfit Data Class
+-----------------
+
+Take :ref:`Maryland Polyvore Dataset<maryland_polyvore>` for example, 
+
+Basic Dataset
+~~~~~~~~~~~~~
+
+For all datasets, we have positive tuples and negative tuples if exists.
+We usually needs different output format. For example
 
 
-Data Reader
------------
+- Datum: Given a key, return the data of the corresponding item. 
+- positive tuples: the :math:`n\times m` array for outfits.
+- negative tuples: the :math:`n\times m` array for outfits.
+- positive data mode: how to generate positive data, usually fixed.
+- positive data param: configuration for specific mode, usually not use
+- negative data mode: how to generate negative data, usually randomly mixed.
+- negative data param: configuration for specific mode, e.g 
 
-Given a key, return the data of the corresponding item.
+We use different subclasses of :class:`outfit_datasets.BaseData` as the implementation.
 
 
-Outfit Data
------------
+Outfit DataLoader
+~~~~~~~~~~~~~~~~~
 
-:class:`outfit_datasets.OutfitData`
+A high-level configuration for outfit data. We introduce :class:`outfit_datasets.OutfitData` as a high-level implementation for outfit data.
 
-Output Format
--------------
 
 .. toctree::
    :hidden:
@@ -67,7 +83,7 @@ Output Format
    :caption: Outfit Datasets
 
    iqon_3000
-   polyvore_maryland
+   maryland_polyvore
    polyvore_outfits
    polyvore_u
    shift15m
@@ -78,4 +94,4 @@ Output Format
    :maxdepth: 2
    :caption: Modules
 
-   outfit_data
+   modules
