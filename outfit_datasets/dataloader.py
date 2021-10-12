@@ -2,9 +2,9 @@ import logging
 import os
 
 import numpy as np
-import pandas as pd
 import torchutils
 from torch.utils.data import DataLoader
+from torchutils import colour
 
 from outfit_datasets.dataset import getOutfitData
 from outfit_datasets.datum import getDatum
@@ -25,27 +25,32 @@ class OutfitLoader(object):
 
     def __init__(self, param: OutfitLoaderParam = None, **kwargs):
         param = OutfitLoaderParam.evolve(param, **kwargs)
-        LOGGER.info("Loading %s data", torchutils.colour(param.phase))
+        self.param = param
+        LOGGER.info("Loading %s data", colour(param.phase))
         LOGGER.info(
-            "DataLoader: batch size (%s), number of workers (%s)",
-            torchutils.colour(param.batch_size),
-            torchutils.colour(param.num_workers),
+            "DataLoader: batch size (%s), number of workers (%s)", colour(param.batch_size), colour(param.num_workers)
         )
         self.num_users = param.num_users
-        self.pos_data = np.array(pd.read_csv(param.pos_fn, dtype=np.int, header=None))
+        if os.path.exists(param.pos_fn):
+            self.pos_data = np.array(torchutils.io.load_csv(param.pos_fn, converter=int))
+            LOGGER.info("Load positive tuples")
+        else:
+            self.pos_data = None
+            LOGGER.warning("Positive tuples does not exist")
         if os.path.exists(param.neg_fn):
-            self.neg_data = np.array(pd.read_csv(param.neg_fn, dtype=np.int, header=None))
-            LOGGER.info("Negatives not exists")
+            self.neg_data = np.array(torchutils.io.load_csv(param.neg_fn, converter=int))
+            LOGGER.info("Load negative tuples")
         else:
             self.neg_data = None
+            LOGGER.warning("Negative tuples does not exist")
         if param.dataset.data_mode == "FITB":
-            data = np.array(pd.read_csv(param.fitb_fn, dtype=np.int))
-            self.pos_data = data
+            self.pos_data = np.array(torchutils.io.load_csv(param.fitb_fn, converter=int))
             self.neg_data = None
-            self.num_comparisons = len(data)
+            self.param.shuffle = False
+            self.num_questions = len(self.pos_data) // self.param.num_fitb_choices
             LOGGER.info("Summary for fill-in-the-blank data set")
-            LOGGER.info("Number of questions: %s", torchutils.colour(self.num_comparisons))
-            LOGGER.info("Number of answers: %s", torchutils.colour(self.param.num_choices))
+            LOGGER.info("Number of FITB questions: %s", colour(self.num_questions))
+            LOGGER.info("Number of FITB answers: %s", colour(self.param.num_fitb_choices))
         else:
             LOGGER.info("Number of positive outfits: %d", len(self.pos_data))
         self.datum = getDatum(param)

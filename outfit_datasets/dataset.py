@@ -202,6 +202,18 @@ class NegativeOutfit(PointwiseOutfit):
         self.labels = np.array([0] * len(self.neg_data))
 
 
+class FITB(PointwiseOutfit):
+    def build(self):
+        self.pos_data = self.ini_data
+        self.max_size = utils.infer_max_size(self.pos_data)
+        self.sections = [1, 1, self.max_size, self.max_size]
+        self.process()
+
+    def process(self):
+        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(self.pos_data)
+        self.labels = np.array([1] * len(self.pos_data))
+
+
 class SequenceOutfit(PositiveOutfit):
     """Sequence builder."""
 

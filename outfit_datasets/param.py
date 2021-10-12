@@ -1,8 +1,11 @@
+import logging
 import os
-from typing import List
+from typing import List, Union
 
 import attr
-from torchutils.param import DataReaderParam, Param
+from torchutils.param import DataReaderParam, OptimParam, Param, to_param
+
+LOGGER = logging.getLogger(__name__)
 
 
 @attr.s
@@ -70,6 +73,8 @@ class OutfitLoaderParam(Param):
     max_size: int = attr.ib(default=10)
     #: number of users
     num_users: int = attr.ib(default=1, converter=int)
+    #: number of choice for FITB task
+    num_fitb_choices: int = attr.ib(default=4, converter=int)
     # for data-lodaer
     #: batch size for dataloader
     batch_size: int = attr.ib(default=64, converter=int)
@@ -83,10 +88,44 @@ class OutfitLoaderParam(Param):
     fitb_fn: str = attr.ib(init=False)
 
     def __attrs_post_init__(self):
+        data_root = os.path.expanduser(self.data_root)
         # reader parameters
         self.readers = [dict()] if len(self.readers) == 0 else self.readers
         self.readers = [DataReaderParam.from_dict(param) for param in self.readers]
-        self.pos_fn = os.path.join(self.data_root, f"{self.phase}_pos")
-        self.neg_fn = os.path.join(self.data_root, f"{self.phase}_neg")
-        self.fitb_fn = os.path.join(self.data_root, f"{self.phase}_fitb")
-        self.item_list_fn = os.path.join(self.data_root, "items.json")
+        self.pos_fn = os.path.join(data_root, f"{self.phase}_pos")
+        self.neg_fn = os.path.join(data_root, f"{self.phase}_neg")
+        self.fitb_fn = os.path.join(data_root, f"{self.phase}_fitb")
+        self.item_list_fn = os.path.join(data_root, "items.json")
+
+
+@attr.s
+class RunParam(Param):
+    r"""Configration interface for training/testing.
+
+    """
+
+    epochs: int = attr.ib(default=100)
+    data_param: Param = attr.ib(factory=dict, converter=to_param)
+    valid_data_param: Param = attr.ib(factory=dict)
+    test_data_param: Param = attr.ib(factory=dict)
+    train_data_param: Param = attr.ib(factory=dict)
+    net_param: Param = attr.ib(factory=dict, converter=to_param)
+    optim_param: OptimParam = attr.ib(factory=dict)
+    summary_interval: int = attr.ib(default=10)
+    display_interval: int = attr.ib(default=50)
+    load_trained: str = attr.ib(default=None)
+    log_dir: str = attr.ib(default=None)
+    log_level: str = attr.ib(default="INFO")
+    gpus: Union[int, list] = attr.ib(default=0)
+    num_runs: int = attr.ib(default=1)
+
+    def __attrs_post_init__(self):
+        if isinstance(self.data_param, Param):
+            self.train_data_param = attr.evolve(self.data_param, **self.train_data_param)
+            self.valid_data_param = attr.evolve(self.data_param, **self.valid_data_param)
+            self.test_data_param = attr.evolve(self.data_param, **self.test_data_param)
+        self.optim_param = OptimParam(**self.optim_param)
+        # for gpus
+        gpus = [self.gpus] if isinstance(self.gpus, int) else self.gpus
+        os.environ["CUDA_VISIBLE_DEVICES"] = ",".join(map(str, gpus))
+        self.gpus = list(range(len(gpus)))
