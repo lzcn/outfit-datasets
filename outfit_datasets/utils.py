@@ -62,7 +62,7 @@ def get_item_list(data: np.ndarray) -> List[np.ndarray]:
         List[np.ndarray]: a list of fashion items
     """
     _, _, item_ids, item_types = split_tuple(data)
-    num_list = (item_types.flatten()).max() + 2
+    num_list = len(set(item_types.flatten()))
     item_set = [set() for _ in range(num_list)]
     for idxs, types in zip(item_ids, item_types):
         for idx, c in zip(idxs, types):
