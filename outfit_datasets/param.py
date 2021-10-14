@@ -69,8 +69,8 @@ class OutfitLoaderParam(Param):
     dataset: OutfitDataParam = attr.ib(factory=dict, converter=OutfitDataParam.from_dict)
     #: number of item categories
     num_types: int = attr.ib(default=10)
-    #: max size of an outfit
-    max_size: int = attr.ib(default=10)
+    #: max number of items in an outfit
+    max_items: int = attr.ib(default=None)
     #: number of users
     num_users: int = attr.ib(default=1, converter=int)
     #: number of choice for FITB task
