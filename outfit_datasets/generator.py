@@ -30,6 +30,9 @@ class Generator:
         """Set the extra representation."""
         return ""
 
+    def info(self):
+        self.logger.info("Generating tuples with {}.".format(self.__repr__()))
+
     def __repr__(self):
         return self.__class__.__name__ + "(" + self.extra_repr() + ")"
 
@@ -143,11 +146,7 @@ class RandomReplaceGenerator(Generator):
         Returns:
             np.ndarray: negative tuples
         """
-        self.logger.info(
-            "Generating tuples with RandomReplace(ratio={}, num_replace={}, type_aware={}) mode.".format(
-                self.ratio, self.num_replace, self.type_aware
-            )
-        )
+        self.logger.info("Generating tuples with %s.".format(self.__repr__()))
         data = data.copy().repeat(self.ratio, axis=0)
         uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         item_list = utils.get_item_list(data)
@@ -185,6 +184,67 @@ class RandomReplaceGenerator(Generator):
         return f"ratio={self.ratio}, num_repalce={self.num_replace}, type_aware={self.type_aware}"
 
 
+class FITBGenerator(Generator):
+    r"""Replace one item in outfit."""
+
+    def __init__(self, ratio=1, type_aware=False):
+        super().__init__()
+        self.ratio = ratio
+        self.type_aware = type_aware
+
+    def run(self, data: np.ndarray) -> np.ndarray:
+        """Randomly replace :math:`n` items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
+        self.logger.info(
+            "Generating tuples with FITBGenerator(ratio={}, type_aware={}) mode.".format(self.ratio, self.type_aware)
+        )
+        pos_uidxs, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
+        item_list = utils.get_item_list(data)
+        num_types = utils.infer_num_type(data)
+        pos_set = set(map(tuple, pos_items))
+        neg_uidxs = pos_uidxs.repeat(self.ratio, axis=0).reshape((-1, 1))
+        neg_sizes = pos_sizes.repeat(self.ratio, axis=0).reshape((-1, 1))
+        neg_items = []
+        neg_types = []
+        for size, items, types in zip(pos_sizes, pos_items, pos_types):
+            replace_index = np.random.choice(size)
+            target_type = types[replace_index]
+            target_item = items[replace_index]
+            for _ in range(self.ratio):
+                sampled_items = items
+                sampled_types = types
+                while tuple(sampled_items) in pos_set:
+                    sampled_items = items.copy()
+                    sampled_types = types.copy()
+                    # random sample an item
+                    sampled_item = target_item
+                    while sampled_item == target_item:
+                        if self.type_aware:
+                            sampled_type = target_type
+                            sampled_item = np.random.choice(item_list[target_type])
+                        else:
+                            sampled_type = np.random.randint(num_types)
+                            sampled_item = np.random.choice(item_list[sampled_type])
+                    # replace item and type
+                    sampled_items[replace_index] = sampled_item
+                    sampled_types[replace_index] = sampled_type
+                neg_items.append(sampled_items)
+                neg_types.append(sampled_types)
+        neg_items = np.array(neg_items)
+        neg_types = np.array(neg_types)
+        neg_data = np.hstack((neg_uidxs, neg_sizes, neg_items, neg_types))
+        return neg_data
+
+    def extra_repr(self) -> str:
+        return f"ratio={self.ratio}, type_aware={self.type_aware}"
+
+
 def getGenerator(
     mode: str, data: np.ndarray = None, ratio: float = 1.0, type_aware: bool = False, num_replace: int = 1,
 ) -> Generator:
@@ -217,6 +277,8 @@ def getGenerator(
     elif mode == "RandomMix":
         return RandomMixGenerator(ratio=ratio, type_aware=type_aware)
     elif mode == "RandomReplace":
-        return RandomReplaceGenerator(raito=ratio, type_aware=type_aware, num_replace=num_replace)
+        return RandomReplaceGenerator(ratio=ratio, type_aware=type_aware, num_replace=num_replace)
+    elif mode == "FITB":
+        return FITBGenerator(ratio=ratio, type_aware=type_aware)
     else:
         raise KeyError

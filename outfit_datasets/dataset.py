@@ -201,15 +201,32 @@ class NegativeOutfit(PointwiseOutfit):
 
 
 class FITB(PointwiseOutfit):
-    def build(self):
-        self.pos_data = self.ini_data
-        self.max_size = utils.infer_max_size(self.pos_data)
-        self.sections = [1, 1, self.max_size, self.max_size]
-        self.process()
+    r"""Generate outfits for FITB task.
+
+        pos_data: positive outfits
+        neg_data: negative outfits
+    """
+
+    # def build(self):
+    #     self.pos_data = self.ini_data
+    #     self.max_size = utils.infer_max_size(self.pos_data)
+    #     self.sections = [1, 1, self.max_size, self.max_size]
+    #     self.process()
 
     def process(self):
-        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(self.pos_data)
-        self.labels = np.array([1] * len(self.pos_data))
+        ratio = len(self.neg_data) // len(self.pos_data)
+        num_questions = len(self.pos_data)
+        num_answers = len(self.neg_data) // len(self.pos_data) + 1
+        self.logger.info("Number of FITB questions: %s", num_questions)
+        self.logger.info("Number of FITB answers: %s", num_answers)
+        pos_data = self.pos_data
+        neg_data = self.neg_data.reshape((num_questions, -1))
+        outfits = np.hstack((pos_data, neg_data))
+        outfits = outfits.reshape((num_questions * num_answers, -1))
+        pos_label = np.ones((num_questions, 1), dtype=np.int64)
+        neg_label = np.zeros((num_questions, ratio), dtype=np.int64)
+        self.labels = np.hstack((pos_label, neg_label)).reshape((-1, 1))
+        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(outfits)
 
 
 class SequenceOutfit(PositiveOutfit):

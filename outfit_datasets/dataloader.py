@@ -31,28 +31,38 @@ class OutfitLoader(object):
             "DataLoader: batch size (%s), number of workers (%s)", colour(param.batch_size), colour(param.num_workers)
         )
         self.num_users = param.num_users
-        if os.path.exists(param.pos_fn):
-            self.pos_data = np.array(torchutils.io.load_csv(param.pos_fn, converter=int))
+        if param.dataset.data_mode == "FITB":
+            pos_fn = param.pos_fitb_fn
+            neg_fn = param.neg_fitb_fn
+        else:
+            pos_fn = param.pos_fn
+            neg_fn = param.neg_fn
+        if os.path.exists(pos_fn):
+            self.pos_data = np.array(torchutils.io.load_csv(pos_fn, converter=int))
             LOGGER.info("Load positive tuples")
+            LOGGER.info("Positive tuples shape: %s", colour(f"{self.pos_data.shape}"))
         else:
             self.pos_data = None
-            LOGGER.warning("Positive tuples does not exist")
-        if os.path.exists(param.neg_fn):
-            self.neg_data = np.array(torchutils.io.load_csv(param.neg_fn, converter=int))
+            LOGGER.error("Positive tuples does not exist")
+        if os.path.exists(neg_fn):
+            self.neg_data = np.array(torchutils.io.load_csv(neg_fn, converter=int))
             LOGGER.info("Load negative tuples")
+            LOGGER.info("Nagative tuples shape: %s", colour(f"{self.neg_data.shape}"))
         else:
             self.neg_data = None
             LOGGER.warning("Negative tuples does not exist")
         if param.dataset.data_mode == "FITB":
-            self.pos_data = np.array(torchutils.io.load_csv(param.fitb_fn, converter=int))
-            self.neg_data = None
             self.param.shuffle = False
-            self.num_questions = len(self.pos_data) // self.param.num_fitb_choices
+            self.num_questions = len(self.pos_data)
+            if self.neg_data is None:
+                self.num_fitb_choices = param.dataset.neg_param.get("ratio", 1) + 1
+            else:
+                self.num_fitb_choices = len(self.neg_data) // len(self.pos_data) + 1
             LOGGER.info("Summary for fill-in-the-blank data set")
-            LOGGER.info("Number of FITB questions: %s", colour(self.num_questions))
+            LOGGER.info("Number of FITB questions: %s", colour(f"{self.num_questions:,}"))
             LOGGER.info("Number of FITB answers: %s", colour(self.param.num_fitb_choices))
         else:
-            LOGGER.info("Number of positive outfits: %d", len(self.pos_data))
+            LOGGER.info("Number of positive outfits: %s", colour(f"{len(self.pos_data):,}"))
         self.datum = getDatum(param)
         self.dataset = getOutfitData(
             datum=self.datum, param=param.dataset, pos_data=self.pos_data, neg_data=self.neg_data
