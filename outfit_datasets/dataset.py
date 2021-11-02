@@ -141,7 +141,6 @@ class SubsetData(PairwiseOutfit):
             sub_data = [datum.get_data(sub_items, sub_types, self.max_size - 1) for datum in self.datum]
             pos_data = [datum.get_item(pos_item, pos_type) for datum in self.datum]
             neg_data = [datum.get_item(neg_item, neg_type) for datum in self.datum]
-        # item category: shape 2 x n
         cate = torch.tensor(sub_types)
         return dict(
             data=sub_data,

@@ -6,7 +6,7 @@ from outfit_datasets.param import OutfitDataParam, OutfitLoaderParam, RunParam
 
 from . import metrics
 
-__version__ = "0.0.1"
+__version__ = "0.0.1-dev211102"
 
 __all__ = [
     "BaseOutfitData",

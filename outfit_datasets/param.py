@@ -85,6 +85,8 @@ class OutfitLoaderParam(Param):
     # non-configurable attributes
     pos_fn: str = attr.ib(init=False)
     neg_fn: str = attr.ib(init=False)
+    pos_fitb_fn: str = attr.ib(init=False)
+    neg_fitb_fn: str = attr.ib(init=False)
     fitb_fn: str = attr.ib(init=False)
 
     def __attrs_post_init__(self):
@@ -94,6 +96,8 @@ class OutfitLoaderParam(Param):
         self.readers = [DataReaderParam.from_dict(param) for param in self.readers]
         self.pos_fn = os.path.join(data_root, f"{self.phase}_pos")
         self.neg_fn = os.path.join(data_root, f"{self.phase}_neg")
+        self.pos_fitb_fn = os.path.join(data_root, f"{self.phase}_pos_fitb")
+        self.neg_fitb_fn = os.path.join(data_root, f"{self.phase}_neg_fitb")
         self.fitb_fn = os.path.join(data_root, f"{self.phase}_fitb")
         self.item_list_fn = os.path.join(data_root, "items.json")
 
