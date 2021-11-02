@@ -4,6 +4,8 @@ import numpy as np
 
 from . import utils
 
+_generator_registry = {}
+
 
 def _run_unimplemented(self, *input: Any) -> None:
     r"""Generate outfit tuples.
@@ -18,6 +20,10 @@ class Generator:
     """
 
     run: Callable[..., Any] = _run_unimplemented
+
+    def __init_subclass__(cls):
+        super().__init_subclass__()
+        _generator_registry[cls.__name__] = cls
 
     def __init__(self):
         self.logger = logging.getLogger(__name__)
@@ -37,11 +43,12 @@ class Generator:
         return self.__class__.__name__ + "(" + self.extra_repr() + ")"
 
 
-class FixGenerator(Generator):
+class Fix(Generator):
     """Always return registered tuples."""
 
-    def __init__(self, data: np.ndarray = None):
+    def __init__(self, data: np.ndarray, **kwargs):
         super().__init__()
+        assert data is not None, "data must be provided."
         self.data = data
 
     def run(self, *input: Any) -> np.ndarray:
@@ -52,8 +59,8 @@ class FixGenerator(Generator):
         return self.data
 
 
-class IdentityGenerator(Generator):
-    def __init__(self):
+class Identity(Generator):
+    def __init__(self, **kwargs):
         super().__init__()
 
     def run(self, data: np.ndarray = None) -> np.ndarray:
@@ -64,10 +71,10 @@ class IdentityGenerator(Generator):
         return data
 
 
-class ResampleGenerator(Generator):
+class Resample(Generator):
     """Resample subset from outfits."""
 
-    def __init__(self, ratio: float = 0.3):
+    def __init__(self, ratio: float = 0.3, **kwargs):
         super().__init__()
         self.ratio = ratio
 
@@ -82,8 +89,8 @@ class ResampleGenerator(Generator):
         return f"ratio={self.ratio}"
 
 
-class RandomMixGenerator(Generator):
-    def __init__(self, ratio: int = 1, type_aware: bool = False):
+class RandomMix(Generator):
+    def __init__(self, ratio: int = 1, type_aware: bool = False, **kwargs):
         super().__init__()
         self.type_aware = type_aware
         self.ratio = ratio
@@ -128,10 +135,10 @@ class RandomMixGenerator(Generator):
         return f"ratio={self.ratio}, type_aware={self.type_aware}"
 
 
-class RandomReplaceGenerator(Generator):
+class RandomReplace(Generator):
     r"""Replace :math:`n` item in outfit."""
 
-    def __init__(self, ratio=1, num_replace=1, type_aware=False):
+    def __init__(self, ratio=1, num_replace=1, type_aware=False, **kwargs):
         super().__init__()
         self.ratio = ratio
         self.num_replace = num_replace
@@ -184,10 +191,10 @@ class RandomReplaceGenerator(Generator):
         return f"ratio={self.ratio}, num_repalce={self.num_replace}, type_aware={self.type_aware}"
 
 
-class FITBGenerator(Generator):
+class FITB(Generator):
     r"""Replace one item in outfit."""
 
-    def __init__(self, ratio=1, type_aware=False):
+    def __init__(self, ratio=1, type_aware=False, **kwargs):
         super().__init__()
         self.ratio = ratio
         self.type_aware = type_aware
@@ -246,7 +253,7 @@ class FITBGenerator(Generator):
 
 
 def getGenerator(
-    mode: str, data: np.ndarray = None, ratio: float = 1.0, type_aware: bool = False, num_replace: int = 1,
+    mode: str, data: np.ndarray = None, ratio: float = 1.0, type_aware: bool = False, num_replace: int = 1, **kwargs
 ) -> Generator:
     r"""Get outfit tuple generator.
 
@@ -271,14 +278,17 @@ def getGenerator(
     """
     if mode == "Fix":
         assert data is not None
-        return FixGenerator(data)
+        return Fix(data)
     elif mode == "Identity":
-        return IdentityGenerator()
+        return Identity()
     elif mode == "RandomMix":
-        return RandomMixGenerator(ratio=ratio, type_aware=type_aware)
+        return RandomMix(ratio=ratio, type_aware=type_aware)
     elif mode == "RandomReplace":
-        return RandomReplaceGenerator(ratio=ratio, type_aware=type_aware, num_replace=num_replace)
+        return RandomReplace(ratio=ratio, type_aware=type_aware, num_replace=num_replace)
     elif mode == "FITB":
-        return FITBGenerator(ratio=ratio, type_aware=type_aware)
+        return FITB(ratio=ratio, type_aware=type_aware)
     else:
-        raise KeyError
+        return _generator_registry[mode](
+            data=data, ratio=ratio, type_aware=type_aware, num_replace=num_replace, **kwargs
+        )
+
