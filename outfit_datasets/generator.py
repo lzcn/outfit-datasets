@@ -153,7 +153,7 @@ class RandomReplace(Generator):
         Returns:
             np.ndarray: negative tuples
         """
-        self.logger.info("Generating tuples with %s.".format(self.__repr__()))
+        self.logger.info("Generating tuples with {}.".format(self.__repr__()))
         data = data.copy().repeat(self.ratio, axis=0)
         uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         item_list = utils.get_item_list(data)
