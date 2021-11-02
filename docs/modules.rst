@@ -4,14 +4,14 @@ DataLoader
 .. autoclass:: outfit_datasets.OutfitDataParam(**kwargs)
     :members:
 
-.. autoclass:: outfit_datasets.OutfitData
+.. autoclass:: outfit_datasets.OutfitLoader
     :members:
 
 
 Dataset
 -------
 
-.. autoclass:: outfit_datasets.DataBuilderParam(**kwargs)
+.. autoclass:: outfit_datasets.OutfitDataParam(**kwargs)
     :members:
 
 .. automodule:: outfit_datasets.dataset

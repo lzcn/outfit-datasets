@@ -3,15 +3,18 @@ A Collection of Fashion Outfit Datasets
 
 Introduction
 ------------
-
-In personalized outfit recommendation, we have a set of outfits with user information.
+In this tutorial, we will show you how to use current released fashion outfits datasets.
+The different between non-personalized and personalized fashion outfits datasets is that each outfit is associated with a user in personalized recommendation.
 Technically, the non-personalized outfit recommendation can be seen as personalized outfit recommendation where there is only one user.
-Suppose that an outfit consists of :math:`n` items from different categories, e.g. :math:`\{x_1, \ldots, x_n\}` and the outfit is liked by the :math:`u`-th user.
+Suppose that an outfit consists of a set of :math:`n` items from different categories, e.g. :math:`\mathcal{O}=\{x_1, \ldots, x_n\}`.
+Each outfit is associated with a user index :math:`u`, where :math:`u\in\mathcal{U}=\{1, \ldots, m\}`.
+In the following sections, we defien the format of the dataset and show how to load the dataset.
 
 Outfit tuple format
 ~~~~~~~~~~~~~~~~~~~
-
-We represent each item with an index in the corresponding cateogry and represent an outfit using following format:
+We first define a list of items by ``item_list``, where ``item_list[i]`` is the list of items in the :math:`i`-th category.
+``item_list[i]`` saves the key of each item for loading the features, and the each outfit is conveterd using the item index in it.
+Overall, we represent each item as the index in the corresponding cateogry and outfit with following format:
 
 .. code-block::
 
@@ -19,55 +22,74 @@ We represent each item with an index in the corresponding cateogry and represent
 
 where:
 
-- ``uid``: user id.
+- ``uid``: the user id :math:`u`.
 - ``size``: length of outfit.
 - ``[items]``: item indexes in the corresponding categories.
-- ``[types]``: cateogry index for each item.
+- ``[types]``: categories for each item in ``[items]``.
 
 
-   The size of ``items`` and ``types`` equals to a pre-defined value ``max_size``. If the size of an outfit is less than ``max_size``, ``-1`` is appended to represent the non-existence of items.
+   The size of ``items`` and ``types`` equals to a pre-defined value ``max_size``. If the size of an outfit is less than ``max_size``, ``-1`` is appended to represent the non-existence.
 
-To get the information of an item, we need to create a list ``x``, where ``x[c][i]`` is the information for :math:`i`-th item in the :math:`c`-th fashion category.
+
+Examples
+
+.. code-block:: python
+
+   print(item_list)
+   # key for items in different categories
+   # [
+   #    [item_key1, item_key2, ...],
+   #    [item_key1, item_key2, ...],
+   #    ...
+   # ]
+   for i, (n, c) in enumerate(zip(items, types)):
+       if n == -1:
+           break
+      print("n-th item: ", item_list[c][n])
+
 
 Negative tuple generation
 ~~~~~~~~~~~~~~~~~~~~~~~~~
+.. currentmodule:: outfit_datasets.generator
 
-:class:`outfit_datasets.generator.Generator`
+Given the outfit tuple format, we can easily generate negative tuples with different subclasses of :class:`Generator`:
 
-Types of generators:
+- ``generator=Generator(init_data, **kwargs)``: the interface for defining a generator with given data
+- ``generator(input_data)``: generate tuples with given input data
 
-- "Fix": return stored tuples.
-- "Identity": return input.
-- "RandomMix": reutrn randomly mixed tuples.
-- "RandomReplace": randomly replace :math:`k` out of :math:`n` items in outfit.
+Supported types of generators are:
+
+- :class:`FixGenerator` that always return ``init_data``.
+- :class:`IdentityGenerator` that always retruns ``input_data``.
+- :class:`RandomMixGenerator` reutrns randomly mixed tuples.
+- :class:`RandomReplaceGenerator` randomly replace :math:`k` out of :math:`n` items in outfit.
+- :class:`FITBGenerator` that randomly generate tuples for FITB task.
 
 Outfit Data Class
 -----------------
+.. currentmodule:: outfit_datasets
 
-Take :ref:`Maryland Polyvore Dataset<maryland_polyvore>` for example, 
 
 Basic Dataset
 ~~~~~~~~~~~~~
 
-For all datasets, we have positive tuples and negative tuples if exists.
-We usually needs different output format. For example
+The :class:`BaseOutfitData` defines different outfit data.
+For all datasets, we have the positive tuples and the negative tuples if existed.
 
 
-- Datum: Given a key, return the data of the corresponding item. 
-- positive tuples: the :math:`n\times m` array for outfits.
-- negative tuples: the :math:`n\times m` array for outfits.
+- Datum: Given a key, return the data of the corresponding item.
+- positive tuples: The :math:`n\times m` array for outfits. Required for all dataset.
+- negative tuples: The :math:`n\times m` array for outfits. Optional.
 - positive data mode: how to generate positive data, usually fixed.
-- positive data param: configuration for specific mode, usually not use
+- positive data param: configuration for specific mode.
 - negative data mode: how to generate negative data, usually randomly mixed.
-- negative data param: configuration for specific mode, e.g 
-
-We use different subclasses of :class:`outfit_datasets.BaseData` as the implementation.
+- negative data param: configuration for specific mode.
 
 
 Outfit DataLoader
 ~~~~~~~~~~~~~~~~~
 
-A high-level configuration for outfit data. We introduce :class:`outfit_datasets.OutfitData` as a high-level implementation for outfit data.
+A high-level configuration for outfit data. We introduce :class:`OutfitLoader` as a high-level implementation for outfit data.
 
 
 .. toctree::
