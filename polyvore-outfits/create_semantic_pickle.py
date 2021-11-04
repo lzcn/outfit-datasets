@@ -1,5 +1,6 @@
+#!/usr/bin/env python
+import argparse
 import os
-import os.path
 import pickle as pkl
 
 import numpy as np
@@ -7,7 +8,7 @@ import torchutils
 from tqdm import tqdm
 
 
-def extract_semantic(data_dir, data_set, output_dir):
+def extract_semantic(data_set, data_dir, output_dir):
     save_dir = os.path.join(output_dir, data_set)
     os.makedirs(save_dir, exist_ok=True)
     metaData = torchutils.io.load_json(f"{data_dir}/polyvore_item_metadata.json")
@@ -36,11 +37,13 @@ def extract_semantic(data_dir, data_set, output_dir):
 
 
 if __name__ == "__main__":
-    inputDir = "release"
-    outputDir = "processed"
-
-    dataSet = "nondisjoint"
-    extract_semantic(inputDir, dataSet, outputDir)
-
-    dataSet = "disjoint"
-    extract_semantic(inputDir, dataSet, outputDir)
+    # fmt: off
+    parser = argparse.ArgumentParser(description="Create semantic features", formatter_class=argparse.ArgumentDefaultsHelpFormatter,)
+    parser.add_argument("--output-dir", default="processed", type=str, help="path for saving semantic data.")
+    parser.add_argument("--input-dir", default="release", type=str, help="path to the released data directory.")
+    args = parser.parse_args()
+    # fmt: on
+    data_set = "nondisjoint"
+    extract_semantic(data_set, args.input_dir, args.output_dir)
+    data_set = "disjoint"
+    extract_semantic(data_set, args.input_dir, args.output_dir)

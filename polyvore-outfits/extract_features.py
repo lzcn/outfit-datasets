@@ -14,12 +14,6 @@ from torchvision import transforms
 from tqdm.auto import tqdm
 
 
-def load_json(fn):
-    with open(fn, "r") as f:
-        data = json.load(f)
-    return data
-
-
 class Extractor(threading.Thread):
     def __init__(self, env, msg="Default debugger"):
         threading.Thread.__init__(self)
@@ -68,7 +62,7 @@ class PolyvoreImage(Dataset):
 
 @torch.no_grad()
 def main(args):
-    all_items = load_json(f"{args.data_dir}/polyvore_item_metadata.json")
+    all_items = torchutils.io.load_json(f"{args.data_dir}/polyvore_item_metadata.json")
     image_keys = list(all_items.keys())
     lmdb_dir = os.path.join(args.feature_dir, args.backbone)
     os.makedirs(lmdb_dir, exist_ok=True)
