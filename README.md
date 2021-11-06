@@ -10,13 +10,39 @@ This is a working-in-progress repository. The API for outfit dataloader is mainl
 python setup.py install
 ```
 
-2. Go to each folder and run the script to process the dataset.
+1. Go to each sub-folder and run scripts to process the dataset.
 
+    - `ifashion`
+    - `iqon-3000`
+    - `maryland-polyvore`
+    - `polyvore-180`
+    - `polyvore-outfits`
+    - `polyvore-u`
+    - `shift15m`
 ## TODOs
 
-scripts for data processing:
+Scripts for data processing:
 
-- [x] Polyvore-U
+- [ ] Polyvore-U
+  - [x] Create Outfits Tuples
+  - [x] Create LMDB data
+  - [ ] Release pre-extraced features
+- [ ] Polyvore-180
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
+  - [ ] Release pre-extraced features
 - [ ] Maryland Polyvore
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
 - [ ] Polyvore Outfits
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
 - [ ] iFashion
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
+- [ ] IQON-3000
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
+- [ ] SHIFT15M
+  - [ ] Create Outfits Tuples
+  - [ ] Create LMDB data
