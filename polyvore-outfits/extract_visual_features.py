@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import json
 import os
 import threading
 from queue import Queue
@@ -11,7 +10,7 @@ import torchutils
 from PIL import Image
 from torch.utils.data import DataLoader, Dataset
 from torchvision import transforms
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 
 class Extractor(threading.Thread):
@@ -85,13 +84,13 @@ def main(args):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-    )
+    # fmt: off
+    parser = argparse.ArgumentParser(description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument("--data-dir", default="release")
     parser.add_argument("--feature-dir", default="processed/features")
     parser.add_argument("--backbone", default="alexnet", help="Backbone")
     parser.add_argument("--num-workers", default=4, type=int)
     parser.add_argument("--batch-size", default=128, type=int)
+    # fmt: on
     args = parser.parse_args()
     main(args)
