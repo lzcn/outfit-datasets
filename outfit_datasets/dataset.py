@@ -246,7 +246,7 @@ class SequenceOutfit(PositiveOutfit):
         )
 
 
-class TripletBuilder(BaseOutfitData):
+class ItemTriplet(BaseOutfitData):
     """Triplet daatset.
 
     Return a triplet (anchor, posi, nega) where posi and nega are from the same category.
@@ -267,9 +267,9 @@ class TripletBuilder(BaseOutfitData):
     def __getitem__(self, n):
         triplet = []
         for datum in self.datum:
-            anc_data = datum.get_data(item_id=self.anc_idx[n], item_type=self.anc_type[n])
-            pos_data = datum.get_data(item_id=self.pos_idx[n], item_type=self.cmp_type[n])
-            neg_data = datum.get_data(item_id=self.neg_idx[n], item_type=self.cmp_type[n])
+            anc_data = datum.get_item(item_id=self.anc_idx[n], item_type=self.anc_type[n])
+            pos_data = datum.get_item(item_id=self.pos_idx[n], item_type=self.cmp_type[n])
+            neg_data = datum.get_item(item_id=self.neg_idx[n], item_type=self.cmp_type[n])
             triplet.append((anc_data, pos_data, neg_data))
         triplet = triplet[0] if len(self.datum) == 1 else triplet
         # get triplet

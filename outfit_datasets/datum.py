@@ -47,25 +47,25 @@ class Datum(object):
             keys.append(keys[-1])
         return keys
 
-    def get_item(self, item_id: int, item_type: int = None) -> torch.Tensor:
+    def get_item(self, item_id: int, item_type: int) -> torch.Tensor:
         r"""Get the data of single item.
 
         Args:
             item_id (int): item id
-            item_type (int, optional): item type. Defaults to None.
+            item_type (int): item type.
 
         Returns:
             torch.Tensor: item data
         """
-        key = self.get_key([item_id], [item_type], 1)[0]
+        key = self.item_list[item_type][item_id]
         return self.reader(key)
 
-    def get_data(self, item_id: np.ndarray, item_type: np.ndarray = None, max_size: int = 1) -> torch.Tensor:
-        r"""Get the data for an outfit
+    def get_data(self, item_id: List, item_type: List, max_size: int = 1) -> torch.Tensor:
+        r"""Get the data for an outfit.
 
         Args:
-            item_id (np.ndarray): item ids
-            item_type (np.ndarray, optional): item types. Defaults to None.
+            item_id (List): item ids
+            item_type (List): item types.
             max_size (int, optional): max size. Defaults to 1.
 
         Returns:
