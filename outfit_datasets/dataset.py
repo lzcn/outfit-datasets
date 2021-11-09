@@ -206,12 +206,6 @@ class FITB(PointwiseOutfit):
         neg_data: negative outfits
     """
 
-    # def build(self):
-    #     self.pos_data = self.ini_data
-    #     self.max_size = utils.infer_max_size(self.pos_data)
-    #     self.sections = [1, 1, self.max_size, self.max_size]
-    #     self.process()
-
     def process(self):
         ratio = len(self.neg_data) // len(self.pos_data)
         num_questions = len(self.pos_data)
@@ -226,6 +220,30 @@ class FITB(PointwiseOutfit):
         neg_label = np.zeros((num_questions, ratio), dtype=np.int64)
         self.labels = np.hstack((pos_label, neg_label)).reshape((-1, 1))
         self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(outfits)
+        # find the index for answer item
+        mask = self.neg_data.reshape(num_questions, num_answers - 1, -1)[:, 0, :] == self.pos_data
+        # the index of answer item
+        index_mask = ~utils.split_tuple(mask)[2]
+        assert index_mask.sum() == num_questions
+        _, item_index = np.where(index_mask)
+        self.item_index = item_index.repeat(num_answers)
+        assert len(self.item_index) == len(self.labels)
+
+    def __getitem__(self, n):
+        items, types = self.items[n], self.types[n]
+        # m x n x data_shape
+        data = [datum.get_data(items, types, self.max_size) for datum in self.datum]
+        data = data[0] if len(self.datum) == 1 else data
+        cate = torch.tensor(types)
+        return dict(
+            size=self.sizes[n],
+            label=self.labels[n],
+            uidx=self.uidxs[n],
+            data=data,
+            name=",".join(self.datum[0].get_key(items, types, self.max_size)),
+            cate=cate,
+            index=self.item_index[n],
+        )
 
 
 class SequenceOutfit(PositiveOutfit):
