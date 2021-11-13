@@ -208,39 +208,37 @@ class FITB(Generator):
         Returns:
             np.ndarray: negative tuples
         """
-        self.logger.info(
-            "Generating tuples with FITBGenerator(ratio={}, type_aware={}) mode.".format(self.ratio, self.type_aware)
-        )
         pos_uidxs, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         item_list = utils.get_item_list(data)
         num_types = utils.infer_num_type(data)
-        pos_set = set(map(tuple, pos_items))
         neg_uidxs = pos_uidxs.repeat(self.ratio, axis=0).reshape((-1, 1))
         neg_sizes = pos_sizes.repeat(self.ratio, axis=0).reshape((-1, 1))
         neg_items = []
         neg_types = []
         for size, items, types in zip(pos_sizes, pos_items, pos_types):
+            # for each outfit, generated n samples
             replace_index = np.random.choice(size)
             target_type = types[replace_index]
             target_item = items[replace_index]
+            item_set = set()
+            item_set.add(target_item)
             for _ in range(self.ratio):
-                sampled_items = items
-                sampled_types = types
-                while tuple(sampled_items) in pos_set:
-                    sampled_items = items.copy()
-                    sampled_types = types.copy()
+                sampled_items = items.copy()
+                sampled_types = types.copy()
+                sampled_item = target_item
+                sampled_type = target_type
+                while sampled_item in item_set:
                     # random sample an item
-                    sampled_item = target_item
-                    while sampled_item == target_item:
-                        if self.type_aware:
-                            sampled_type = target_type
-                            sampled_item = np.random.choice(item_list[target_type])
-                        else:
-                            sampled_type = np.random.randint(num_types)
-                            sampled_item = np.random.choice(item_list[sampled_type])
-                    # replace item and type
-                    sampled_items[replace_index] = sampled_item
-                    sampled_types[replace_index] = sampled_type
+                    if self.type_aware:
+                        sampled_type = target_type
+                        sampled_item = np.random.choice(item_list[target_type])
+                    else:
+                        sampled_type = np.random.randint(num_types)
+                        sampled_item = np.random.choice(item_list[sampled_type])
+                # replace item and type
+                sampled_items[replace_index] = sampled_item
+                sampled_types[replace_index] = sampled_type
+                item_set.add(sampled_item)
                 neg_items.append(sampled_items)
                 neg_types.append(sampled_types)
         neg_items = np.array(neg_items)
@@ -291,4 +289,3 @@ def getGenerator(
         return _generator_registry[mode](
             data=data, ratio=ratio, type_aware=type_aware, num_replace=num_replace, **kwargs
         )
-
