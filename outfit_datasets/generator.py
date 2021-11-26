@@ -16,7 +16,22 @@ def _run_unimplemented(self, *input: Any) -> None:
 
 
 class Generator:
-    r"""Base class for all generator.
+    r"""Base class for tuple generator.
+
+    This class is used to generate outfit tuples. Subclasses will be registered by the
+    class name.
+
+    Example:
+
+        .. code-block:: python
+
+            class MyGenerator(Generator):
+                def run(self, data: np.ndarray = None) -> np.ndarray:
+                    // ...
+                    return data
+
+            generator = MyGenerator(**kwargs)
+            tuples = generator(data)
     """
 
     run: Callable[..., Any] = _run_unimplemented
@@ -33,7 +48,6 @@ class Generator:
         return self.run(data)
 
     def extra_repr(self) -> str:
-        """Set the extra representation."""
         return ""
 
     def info(self):
@@ -44,7 +58,7 @@ class Generator:
 
 
 class Fix(Generator):
-    """Always return registered tuples."""
+    r"""Always return saved tuples."""
 
     def __init__(self, data: np.ndarray, **kwargs):
         super().__init__()
@@ -60,6 +74,8 @@ class Fix(Generator):
 
 
 class Identity(Generator):
+    r"""Always return input tuples."""
+
     def __init__(self, **kwargs):
         super().__init__()
 
@@ -72,7 +88,9 @@ class Identity(Generator):
 
 
 class Resample(Generator):
-    """Resample subset from outfits."""
+    r"""Resample a subset of input tuples.
+
+    """
 
     def __init__(self, ratio: float = 0.3, **kwargs):
         super().__init__()
@@ -90,6 +108,19 @@ class Resample(Generator):
 
 
 class RandomMix(Generator):
+    r"""Return randomly mixed tuples.
+
+    Gian an outfit :math:`\{x_1, \ldots,x_n\}`, for each item :math:`x_i`, randomly sample
+    a new item :math:`x_i^-` to get a negative outfit :math:`\{x_1^-, \ldots,x_n^-\}`.
+
+    Args:
+
+        ratio (int): ratio of negative outfits to be sampled for each positive outfit.
+        type_aware (bool): whether to sample negative item :math:`x_i^-` with the same
+            type of :math:`x_i`.
+
+    """
+
     def __init__(self, ratio: int = 1, type_aware: bool = False, **kwargs):
         super().__init__()
         self.type_aware = type_aware
