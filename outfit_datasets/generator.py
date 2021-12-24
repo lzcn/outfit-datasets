@@ -149,15 +149,14 @@ class RandomMix(Generator):
             n_sampled = 0
             while n_sampled < self.ratio:
                 if self.type_aware:
-                    sampled = [np.random.choice(item_list[i]) for i in item_types]
-                    neg_types.append(item_types)
+                    sampled_types = item_types
                 else:
-                    sampled_type = np.random.randint(num_types, size=max_items)
-                    sampled = [np.random.choice(item_list[i]) for i in sampled_type]
-                    neg_types.append(sampled_type)
-                if tuple(sampled) not in pos_set:
+                    sampled_types = np.random.randint(num_types, size=max_items)
+                sampled_items = [np.random.choice(item_list[i]) for i in sampled_types]
+                if tuple(sampled_items) not in pos_set:
                     n_sampled += 1
-                    neg_items.append(sampled)
+                    neg_items.append(sampled_items)
+                    neg_types.append(sampled_types)
         neg_items = np.array(neg_items)
         neg_types = np.array(neg_types)
         return np.hstack([neg_uids, neg_sizes, neg_items, neg_types])
