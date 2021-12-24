@@ -166,6 +166,46 @@ class RandomMix(Generator):
         return f"ratio={self.ratio}, type_aware={self.type_aware}"
 
 
+class RandomAddon(Generator):
+    def __init__(self, ratio: int = 1, **kwargs):
+        super().__init__()
+        self.ratio = ratio
+
+    def run(self, data: np.ndarray) -> np.ndarray:
+        """Random mixing items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
+        item_list = utils.get_item_list(data)
+        num_types = utils.infer_num_type(data)
+        pos_uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
+        neg_uids = pos_uids.repeat(self.ratio, axis=0).reshape((-1, 1))
+        neg_sizes = pos_sizes.repeat(self.ratio, axis=0).reshape((-1, 1))
+        neg_sizes += 1
+        neg_types = []
+        neg_items = []
+        pos_set = set(map(tuple, pos_items))
+        for items, types in zip(pos_items, pos_types):
+            n_sampled = 0
+            while n_sampled < self.ratio:
+                # sample an item
+                sampled_type = np.random.randint(num_types)
+                sampled_item = np.random.choice(item_list[sampled_type])
+                neg_types.append([sampled_type] + types.tolist())
+                neg_items.append([sampled_item] + items.tolist())
+                n_sampled += 1
+        neg_items = np.array(neg_items)
+        neg_types = np.array(neg_types)
+        return np.hstack([neg_uids, neg_sizes, neg_items, neg_types])
+
+    def extra_repr(self) -> str:
+        return f"ratio={self.ratio}"
+
+
 class RandomReplace(Generator):
     r"""Replace :math:`n` item in outfit."""
 
@@ -281,9 +321,7 @@ class FITB(Generator):
         return f"ratio={self.ratio}, type_aware={self.type_aware}"
 
 
-def getGenerator(
-    mode: str, data: np.ndarray = None, ratio: float = 1.0, type_aware: bool = False, num_replace: int = 1, **kwargs
-) -> Generator:
+def getGenerator(mode: str, data=None, **kwargs) -> Generator:
     r"""Get outfit tuple generator.
 
     Types of generators:
@@ -305,18 +343,6 @@ def getGenerator(
         [Generator]: generator
 
     """
-    if mode == "Fix":
-        assert data is not None
-        return Fix(data)
-    elif mode == "Identity":
-        return Identity()
-    elif mode == "RandomMix":
-        return RandomMix(ratio=ratio, type_aware=type_aware)
-    elif mode == "RandomReplace":
-        return RandomReplace(ratio=ratio, type_aware=type_aware, num_replace=num_replace)
-    elif mode == "FITB":
-        return FITB(ratio=ratio, type_aware=type_aware)
-    else:
-        return _generator_registry[mode](
-            data=data, ratio=ratio, type_aware=type_aware, num_replace=num_replace, **kwargs
-        )
+    supported_modes = ",".join(_generator_registry.keys())
+    assert mode in _generator_registry, f"Generator mode {mode} is not support. Only {supported_modes} are supported."
+    return _generator_registry[mode](data=data, **kwargs)
