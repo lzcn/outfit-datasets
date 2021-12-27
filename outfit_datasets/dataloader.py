@@ -72,6 +72,7 @@ class OutfitLoader(object):
             batch_size=param.batch_size,
             num_workers=param.num_workers,
             shuffle=param.shuffle,
+            drop_last=param.drop_last,
             pin_memory=True,
         )
 

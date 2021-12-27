@@ -80,6 +80,7 @@ class OutfitLoaderParam(Param):
     batch_size: int = attr.ib(default=64, converter=int)
     #: number of workers for dataloader
     num_workers: int = attr.ib(default=8, converter=int)
+    drop_last: bool = attr.ib(default=False)
     #: whether to shuffle the dataset
     shuffle: bool = attr.ib(default=None)
     # non-configurable attributes
