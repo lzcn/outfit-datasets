@@ -7,7 +7,6 @@ import torch
 from outfit_datasets.datum import Datum
 from outfit_datasets.generator import Generator, getGenerator
 from outfit_datasets.param import OutfitDataParam
-
 from . import utils
 
 _dataset_registry = {}
@@ -49,8 +48,8 @@ class BaseOutfitData(object):
         self.pos_data = None
         self.neg_data = None
         self.ini_data = pos_data
-        self.pos_generator = getGenerator(self.param.pos_mode, pos_data, **param.pos_param)
-        self.neg_generator = getGenerator(self.param.neg_mode, neg_data, **param.neg_param)
+        self.pos_generator = getGenerator(self.param.pos_mode, data=pos_data, **param.pos_param)
+        self.neg_generator = getGenerator(self.param.neg_mode, data=neg_data, **param.neg_param)
         self.build()
 
     def build(self):
@@ -122,11 +121,97 @@ class PairwiseOutfit(BaseOutfitData):
         self.neg_types = neg_types
 
 
+class NPairOutfit(BaseOutfitData):
+    def __getitem__(self, n):
+        # in current implementation, pos_types == neg_types
+        pos_items, pos_types = self.pos_items[n], self.pos_types[n]
+        neg_items, neg_types = self.neg_items[n], self.neg_types[n]
+        pos_args = (pos_items, pos_types, self.max_size)
+        neg_args = (neg_items, neg_types, self.max_size)
+        cate = []
+        data = []
+        if len(self.datum) == 1:
+            datum = self.datum[0]
+            n_pair = []
+            n_pair.append(datum.get_data(*pos_args))
+            cate.append(torch.tensor(pos_types))
+            for i in range(self.neg_generator.ratio):
+                idx = n * self.neg_generator.ratio + i
+                n_pair.append(datum.get_data(self.neg_items[idx], self.neg_types[idx], self.max_size))
+                cate.append(torch.tensor(self.neg_types[idx]))
+            data = torch.stack(n_pair, dim=0)
+        else:
+            data = [torch.stack([datum.get_data(*pos_args), datum.get_data(*neg_args)], dim=0) for datum in self.datum]
+        # item category: shape 2 x n
+        cate = torch.stack(cate, dim=0)
+        # outfit size: shape 2
+        size = torch.tensor([self.pos_sizes[n], self.neg_sizes[n]])
+        name = (",".join(self.datum[0].get_key(*pos_args)), ",".join(self.datum[0].get_key(*neg_args)))
+        return dict(data=data, name=name, size=size, uidx=self.uidxs[n], cate=cate)
+
+    def __len__(self):
+        return len(self.uidxs)
+
+    def process(self):
+        # split tuples
+        pos_uidx, pos_sizes, pos_items, pos_types = utils.split_tuple(self.pos_data)
+        neg_uidx, neg_sizes, neg_items, neg_types = utils.split_tuple(self.neg_data)
+        # check tuples
+        ratio = len(self.neg_data) // len(self.pos_data)
+        assert (ratio * len(self.pos_data)) == len(self.neg_data)
+        assert (pos_uidx.repeat(ratio, axis=0) == neg_uidx).all()
+        # save tuples
+        self.uidxs = pos_uidx
+        # positive data
+        self.pos_sizes = pos_sizes
+        self.pos_items = pos_items
+        self.pos_types = pos_types
+        # negative data
+        self.neg_sizes = neg_sizes
+        self.neg_items = neg_items
+        self.neg_types = neg_types
+
+
 class SubsetData(PairwiseOutfit):
     def __getitem__(self, n):
         # in current implementation, pos_types == neg_types
         item_size = self.pos_sizes[n]
         index = np.random.randint(item_size)
+        sub_items, sub_types = list(self.pos_items[n]), list(self.pos_types[n])
+        pos_item = sub_items.pop(index)
+        pos_type = sub_types.pop(index)
+        neg_item, neg_type = self.neg_items[n][index], self.neg_types[n][index]
+        if len(self.datum) == 1:
+            datum = self.datum[0]
+            sub_data = datum.get_data(sub_items, sub_types, self.max_size - 1)
+            pos_data = datum.get_item(pos_item, pos_type)
+            neg_data = datum.get_item(neg_item, neg_type)
+        else:
+            # m x n x *
+            sub_data = [datum.get_data(sub_items, sub_types, self.max_size - 1) for datum in self.datum]
+            pos_data = [datum.get_item(pos_item, pos_type) for datum in self.datum]
+            neg_data = [datum.get_item(neg_item, neg_type) for datum in self.datum]
+        cate = torch.tensor(sub_types)
+        return dict(
+            data=sub_data,
+            size=item_size - 1,
+            uidx=self.uidxs[n],
+            cate=cate,
+            pos_data=pos_data,
+            neg_data=neg_data,
+            pos_cate=pos_type,
+            neg_cate=neg_type,
+        )
+
+
+class SubsetDataFixType(PairwiseOutfit):
+    def __getitem__(self, n):
+        # in current implementation, pos_types == neg_types
+        item_size = self.pos_sizes[n]
+        index = np.random.randint(item_size)
+        for index in range(item_size):
+            if self.pos_types[n][index] == 0:
+                break
         sub_items, sub_types = list(self.pos_items[n]), list(self.pos_types[n])
         pos_item = sub_items.pop(index)
         pos_type = sub_types.pop(index)
@@ -243,6 +328,61 @@ class FITB(PointwiseOutfit):
             name=",".join(self.datum[0].get_key(items, types, self.max_size)),
             cate=cate,
             index=self.item_index[n],
+        )
+
+
+class OutlierOutfit(PointwiseOutfit):
+    r"""Generate outfits with outlier items.
+    """
+
+    def process(self):
+        ratio = len(self.neg_data) // len(self.pos_data)
+        pos_data = self.pos_data.repeat(ratio, axis=0)
+        neg_data = self.neg_data
+        pos_items = utils.split_tuple(pos_data)[2]
+        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(neg_data)
+        x, y = np.where(pos_items != self.items)
+        assert len(x) == len(self.items), "Only support replacing one item currently"
+        self.y = y
+
+    def __getitem__(self, n):
+        items, types = self.items[n], self.types[n]
+        # m x n x data_shape
+        data = [datum.get_data(items, types, self.max_size) for datum in self.datum]
+        data = data[0] if len(self.datum) == 1 else data
+        cate = torch.tensor(types)
+        return dict(
+            size=self.sizes[n],
+            uidx=self.uidxs[n],
+            data=data,
+            name=",".join(self.datum[0].get_key(items, types, self.max_size)),
+            cate=cate,
+            y=self.y[n],
+        )
+
+
+class AddonOutlierOutfit(PointwiseOutfit):
+    r"""Generate outfits with outlier items.
+    """
+
+    def process(self):
+        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(self.neg_data)
+        self.y = np.zeros(len(self.uidxs), dtype=np.int64)
+
+    def __getitem__(self, n):
+        items, types = self.items[n], self.types[n]
+        # m x n x data_shape
+        data = [datum.get_data(items, types, self.max_size) for datum in self.datum]
+        data = data[0] if len(self.datum) == 1 else data
+        cate = torch.tensor(types)
+        return dict(
+            size=self.sizes[n],
+            uidx=self.uidxs[n],
+            data=data,
+            name=",".join(self.datum[0].get_key(items, types, self.max_size)),
+            cate=cate,
+            y=0,
+            y_true=0,
         )
 
 
