@@ -58,7 +58,7 @@ class OutfitLoader(object):
             self.neg_data = np.array(torchutils.io.load_csv(neg_fn, converter=int))
             self.neg_data = _back_compatibility(self.neg_data)
             LOGGER.info("Load negative tuples")
-            LOGGER.info("Nagative tuples shape: %s", colour(f"{self.neg_data.shape}"))
+            LOGGER.info("Negative tuples shape: %s", colour(f"{self.neg_data.shape}"))
         else:
             self.neg_data = None
             LOGGER.warning("Negative tuples does not exist")

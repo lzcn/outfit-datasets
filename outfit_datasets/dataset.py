@@ -3,10 +3,10 @@ from typing import List
 
 import numpy as np
 import torch
-
 from outfit_datasets.datum import Datum
 from outfit_datasets.generator import Generator, getGenerator
 from outfit_datasets.param import OutfitDataParam
+
 from . import utils
 
 _dataset_registry = {}
@@ -24,8 +24,8 @@ class BaseOutfitData(object):
         neg_data (np.ndarray, optional): the negative tuples. Defaults to ``None``.
         pos_mode (str, optional): positive generator mode. Defaults to ``"Fix"``.
         neg_mode (str, optional): negative generator mode. Defaults to ``"RandomMix"``.
-        pos_param (dict, optional): parameters for positve generator. Defaults to ``None``.
-        neg_param (dict, optional): parameters for negatie generator. Defaults to ``None``.
+        pos_param (dict, optional): parameters for positive generator. Defaults to ``None``.
+        neg_param (dict, optional): parameters for negative generator. Defaults to ``None``.
 
     """
 
@@ -58,7 +58,7 @@ class BaseOutfitData(object):
         self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
         self.logger.info("Generating negative tuples.")
         self.neg_data = self.neg_generator(self.pos_data)
-        self.logger.info("Nagative tuples shape: {}".format(self.pos_data.shape))
+        self.logger.info("Negative tuples shape: {}".format(self.pos_data.shape))
         self.max_size = utils.infer_max_size(self.pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
         self.process()
@@ -122,31 +122,40 @@ class PairwiseOutfit(BaseOutfitData):
 
 
 class NPairOutfit(BaseOutfitData):
+    """n-pair outfits.
+
+    Return a list of outfits with the first one being the positive and the others being negatives.
+    """
     def __getitem__(self, n):
         # in current implementation, pos_types == neg_types
+        items = []
+        types = []
+        size = []
+        name = []
+        # for positive outfit
         pos_items, pos_types = self.pos_items[n], self.pos_types[n]
-        neg_items, neg_types = self.neg_items[n], self.neg_types[n]
-        pos_args = (pos_items, pos_types, self.max_size)
-        neg_args = (neg_items, neg_types, self.max_size)
-        cate = []
+        items.append(pos_items)
+        types.append(pos_types)
+        size.append(self.pos_sizes[n])
+        name.append(",".join(self.datum[0].get_key(pos_items, pos_types, self.max_size)))
+        # for negative outfits
+        neg_index = [n * self.num_neg + i for i in range(self.num_neg)]
+        for idx in neg_index:
+            items.append(self.neg_items[idx])
+            types.append(self.neg_types[idx])
+            size.append(self.neg_sizes[idx])
+            name.append(",".join(self.datum[0].get_key(self.neg_items[idx], self.neg_types[idx], self.max_size)))
         data = []
-        if len(self.datum) == 1:
-            datum = self.datum[0]
-            n_pair = []
-            n_pair.append(datum.get_data(*pos_args))
-            cate.append(torch.tensor(pos_types))
-            for i in range(self.neg_generator.ratio):
-                idx = n * self.neg_generator.ratio + i
-                n_pair.append(datum.get_data(self.neg_items[idx], self.neg_types[idx], self.max_size))
-                cate.append(torch.tensor(self.neg_types[idx]))
-            data = torch.stack(n_pair, dim=0)
-        else:
-            data = [torch.stack([datum.get_data(*pos_args), datum.get_data(*neg_args)], dim=0) for datum in self.datum]
-        # item category: shape 2 x n
-        cate = torch.stack(cate, dim=0)
-        # outfit size: shape 2
-        size = torch.tensor([self.pos_sizes[n], self.neg_sizes[n]])
-        name = (",".join(self.datum[0].get_key(*pos_args)), ",".join(self.datum[0].get_key(*neg_args)))
+        for datum in self.datum:
+            x = [datum.get_data(item_id, item_type, self.max_size) for item_id, item_type in zip(items, types)]
+            data.append(torch.stack(x, dim=0))
+        # [num_modalities] x (1 + num_neg) x data_shape
+        data = data[0] if len(self.datum) == 1 else torch.stack(data, dim=0)
+        # item category: shape (1 + num_neg) x n
+        cate = torch.stack([torch.tensor(x) for x in types], dim=0)
+        # outfit size: shape (1 + num_neg)
+        size = torch.tensor(size)
+        name = tuple(name)
         return dict(data=data, name=name, size=size, uidx=self.uidxs[n], cate=cate)
 
     def __len__(self):
@@ -160,6 +169,8 @@ class NPairOutfit(BaseOutfitData):
         ratio = len(self.neg_data) // len(self.pos_data)
         assert (ratio * len(self.pos_data)) == len(self.neg_data)
         assert (pos_uidx.repeat(ratio, axis=0) == neg_uidx).all()
+        # number of negatives
+        self.num_neg = ratio
         # save tuples
         self.uidxs = pos_uidx
         # positive data
@@ -420,7 +431,7 @@ class ItemTriplet(BaseOutfitData):
         conditions = dict()
         for i, j in zip(anc_type, cmp_type):
             conditions[(i, j)] = len(conditions)
-        self.condtions = conditions
+        self.conditions = conditions
 
     def __getitem__(self, n):
         triplet = []
@@ -434,10 +445,10 @@ class ItemTriplet(BaseOutfitData):
         # conditions are the same for triplet since:
         # 1. pos and neg are from the same category
         # 2. only anc->pos and anc->neg pairs are considered
-        if (self.anc_type[n], self.cmp_type[n]) not in self.condtions:
+        if (self.anc_type[n], self.cmp_type[n]) not in self.conditions:
             condition = 0
         else:
-            condition = self.condtions[(self.anc_type[n], self.cmp_type[n])]
+            condition = self.conditions[(self.anc_type[n], self.cmp_type[n])]
         types = torch.LongTensor([self.anc_type[n], self.cmp_type[n]])
         return dict(data=triplet, condition=condition, label=-1, types=types)
 

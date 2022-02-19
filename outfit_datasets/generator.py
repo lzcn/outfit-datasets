@@ -1,5 +1,6 @@
 import logging
 from typing import Any, Callable
+
 import numpy as np
 
 from . import utils
@@ -68,7 +69,7 @@ class Fix(Generator):
     def run(self, *input: Any) -> np.ndarray:
         """Fixed generator.
 
-        Return registed tuples.
+        Return registered tuples.
         """
         return self.data
 
@@ -82,7 +83,7 @@ class Identity(Generator):
     def run(self, data: np.ndarray = None) -> np.ndarray:
         """Identity generator.
 
-        Retrun input tuples
+        Return input tuples
         """
         return data
 
@@ -327,7 +328,7 @@ def getGenerator(mode: str, data=None, **kwargs) -> Generator:
 
     - "Fix": return stored tuples.
     - "Identity": return input.
-    - "RandomMix": reutrn randomly mixed tuples.
+    - "RandomMix": return randomly mixed tuples.
     - "RandomReplace": randomly replace :math:`n` items in outfit.
 
     Args:
