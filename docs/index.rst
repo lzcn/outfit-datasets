@@ -8,13 +8,13 @@ The different between non-personalized and personalized fashion outfits datasets
 Technically, the non-personalized outfit recommendation can be seen as personalized outfit recommendation where there is only one user.
 Suppose that an outfit consists of a set of :math:`n` items from different categories, e.g. :math:`\mathcal{O}=\{x_1, \ldots, x_n\}`.
 Each outfit is associated with a user index :math:`u`, where :math:`u\in\mathcal{U}=\{1, \ldots, m\}`.
-In the following sections, we defien the format of the dataset and show how to load the dataset.
+In the following sections, we define the format of the dataset and show how to load the dataset.
 
 Outfit tuple format
 ~~~~~~~~~~~~~~~~~~~
 We first define a list of items by ``item_list``, where ``item_list[i]`` is the list of items in the :math:`i`-th category.
 ``item_list[i]`` saves the key of each item for loading the features, and the each outfit is conveterd using the item index in it.
-Overall, we represent each item as the index in the corresponding cateogry and outfit with following format:
+Overall, we represent each item as the index in the corresponding category and outfit with following format:
 
 .. code-block::
 
@@ -59,11 +59,11 @@ Given the outfit tuple format, we can easily generate negative tuples with diffe
 
 Supported types of generators are:
 
-- :class:`FixGenerator` that always return ``init_data``.
-- :class:`IdentityGenerator` that always retruns ``input_data``.
-- :class:`RandomMixGenerator` reutrns randomly mixed tuples.
+- :class:`FixGenerator` always returns ``init_data``.
+- :class:`IdentityGenerator` always returns ``input_data``.
+- :class:`RandomMixGenerator` returns randomly mixed tuples.
 - :class:`RandomReplaceGenerator` randomly replace :math:`k` out of :math:`n` items in outfit.
-- :class:`FITBGenerator` that randomly generate tuples for FITB task.
+- :class:`FITBGenerator` randomly generates tuples for FITB task.
 
 Outfit Data Class
 -----------------

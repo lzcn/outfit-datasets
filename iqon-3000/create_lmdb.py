@@ -6,7 +6,8 @@ import torchutils
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Create LMDB for all images.", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Create LMDB for all images.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--lmdb-dir", default="processed/features/images_m")
     parser.add_argument("--image-dir", default="raw/images")

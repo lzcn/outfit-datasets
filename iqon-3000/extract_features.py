@@ -14,7 +14,7 @@ from tqdm.auto import tqdm
 
 
 class Extractor(threading.Thread):
-    def __init__(self, env, msg="Default debugger"):
+    def __init__(self, env):
         threading.Thread.__init__(self)
         self.queue = Queue()
         self.daemon = True
@@ -63,13 +63,16 @@ def main(args):
     os.makedirs(lmdb_dir, exist_ok=True)
     print("Getting dataloader.")
     loader = DataLoader(
-        dataset=IQONImage(args.image_dir), batch_size=args.batch_size, num_workers=args.num_workers, shuffle=False,
+        dataset=IQONImage(args.image_dir),
+        batch_size=args.batch_size,
+        num_workers=args.num_workers,
+        shuffle=False,
     )
     print("Getting backbone: {}.".format(backbone))
     model, _ = torchutils.backbone(backbone)
     model.cuda()
     model.eval()
-    env = lmdb.open(lmdb_dir, map_size=2 ** 40)
+    env = lmdb.open(lmdb_dir, map_size=2**40)
     extractor = Extractor(env)
     extractor.start()
     for names, x in tqdm(loader, desc="Extract features"):
@@ -83,7 +86,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Extract feature from given backbone.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--image-dir")
     parser.add_argument("--feature-dir")

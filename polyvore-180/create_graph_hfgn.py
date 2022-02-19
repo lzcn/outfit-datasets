@@ -119,22 +119,19 @@ print("Number of outfits:", len(all_outfits), "Number of used times:", n_outfits
 # %%
 
 # create user-outfit tuples
-def get_uo(outfits):
-    pass
-
 
 # %%
 
 
 def convert_tuples(tuples, index_map):
-    conveted = []
+    converted = []
     for outfit in tuples:
         uidx, *items = outfit
         items = [index_map[n][idx] for n, idx in enumerate(items)]
         types = [0, 1, 2]
         size = 3
-        conveted.append([uidx, size] + items + types)
-    return conveted
+        converted.append([uidx, size] + items + types)
+    return converted
 
 
 train_pos_converted = convert_tuples(train_pos, trainIndexMapImage)

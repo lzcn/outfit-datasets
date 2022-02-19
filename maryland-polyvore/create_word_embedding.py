@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 import pickle as pkl
+
 import numpy as np
 from tqdm.auto import tqdm
 
@@ -14,8 +15,8 @@ def load_json(fn):
 def main(input_dir, output_dir):
     train = load_json(f"{input_dir}/label/train_no_dup.json")
     valid = load_json(f"{input_dir}/label/valid_no_dup.json")
-    tast = load_json(f"{input_dir}/label/test_no_dup.json")
-    outfits = train + valid + tast
+    test = load_json(f"{input_dir}/label/test_no_dup.json")
+    outfits = train + valid + test
     words = dict()
     with open(f"{input_dir}/final_word_dict.txt") as f:
         for l in f.readlines():
@@ -24,7 +25,7 @@ def main(input_dir, output_dir):
     word_dict = dict()
     for w in words:
         word_dict[w] = len(word_dict)
-    print("Number of words: {}, plus 1 unkown".format(len(word_dict)))
+    print("Number of words: {}, plus 1 unknown".format(len(word_dict)))
 
     item_words = dict()
     for outfit in tqdm(outfits, desc="Creating bag of words"):

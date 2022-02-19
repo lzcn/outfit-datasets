@@ -17,8 +17,8 @@ def load_json(fn):
 def get_images(input_dir):
     train = load_json(f"{input_dir}/label/train_no_dup.json")
     valid = load_json(f"{input_dir}/label/valid_no_dup.json")
-    tast = load_json(f"{input_dir}/label/test_no_dup.json")
-    outfits = train + valid + tast
+    test = load_json(f"{input_dir}/label/test_no_dup.json")
+    outfits = train + valid + test
 
     item_images = dict()
 
@@ -52,7 +52,7 @@ def check_reuse_images(item_images):
 
 def save_as_lmdb(item_images, output_dir):
     dst = f"{output_dir}/features/images"
-    env = lmdb.open(dst, map_size=2 ** 40)
+    env = lmdb.open(dst, map_size=2**40)
     # open json file
     with env.begin(write=True) as txn:
         for item_id, item_path in tqdm(item_images.items(), desc="Writing images"):

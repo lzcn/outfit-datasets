@@ -7,7 +7,7 @@ import torchutils
 from tqdm.auto import tqdm
 
 parser = argparse.ArgumentParser(
-    description="Merge all JSON file", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    description="Merge all JSON file", formatter_class=argparse.ArgumentDefaultsHelpFormatter
 )
 parser.add_argument("--data-dir", default="raw/images")
 parser.add_argument("--output", default="processed/outfits.json")

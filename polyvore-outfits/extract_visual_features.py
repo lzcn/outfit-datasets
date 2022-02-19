@@ -14,7 +14,7 @@ from tqdm import tqdm
 
 
 class Extractor(threading.Thread):
-    def __init__(self, env, msg="Default debugger"):
+    def __init__(self, env):
         threading.Thread.__init__(self)
         self.queue = Queue()
         self.daemon = True
@@ -66,12 +66,12 @@ def main(args):
     lmdb_dir = os.path.join(args.feature_dir, args.backbone)
     os.makedirs(lmdb_dir, exist_ok=True)
     print("Getting dataloader.")
-    loader = DataLoader(dataset=PolyvoreImage(image_keys, args.data_dir), batch_size=64, num_workers=8, shuffle=False,)
+    loader = DataLoader(dataset=PolyvoreImage(image_keys, args.data_dir), batch_size=64, num_workers=8, shuffle=False)
     print("Getting backbone: {}.".format(args.backbone))
     model, _ = torchutils.backbone(args.backbone)
     model.cuda()
     model.eval()
-    env = lmdb.open(lmdb_dir, map_size=2 ** 40)
+    env = lmdb.open(lmdb_dir, map_size=2**40)
     extractor = Extractor(env)
     extractor.start()
     for names, x in tqdm(loader, desc="Extract features"):

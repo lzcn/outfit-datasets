@@ -12,7 +12,7 @@ images = torchutils.files.scan_files(f"{input_dir}/images/291x291", suffix="jpg"
 dst = f"{output_dir}/features/images"
 
 os.makedirs(dst, exist_ok=True)
-env = lmdb.open(dst, map_size=2 ** 40)
+env = lmdb.open(dst, map_size=2**40)
 # open json file
 with env.begin(write=True) as txn:
     for fn in tqdm(images):

@@ -105,9 +105,7 @@ class OutfitLoaderParam(Param):
 
 @attr.s
 class RunParam(Param):
-    r"""Configration interface for training/testing.
-
-    """
+    r"""Configuration interface for training/testing."""
 
     epochs: int = attr.ib(default=100)
     data_param: Param = attr.ib(factory=dict, converter=to_param)

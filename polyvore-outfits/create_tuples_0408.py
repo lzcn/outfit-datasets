@@ -27,7 +27,7 @@ saveFile = True
 # %%
 # all imgages saved in item_id.jpg format
 image_files = torchutils.files.scan_files(f"{inputDir}/images", suffix="jpg")
-print("Nubmer of images: {:,}".format(len(image_files)))
+print("Number of images: {:,}".format(len(image_files)))
 
 # %% [markdown]
 # ## Example item format

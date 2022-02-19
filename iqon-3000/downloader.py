@@ -40,7 +40,8 @@ def download_image(img_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Download images", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Download images",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
     parser.add_argument("--json-file", default="processed/outfits.json")
     parser.add_argument("--image-dir", default="raw/images")

@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import argparse
-import json
 import os
 import threading
 from queue import Queue
@@ -15,7 +14,7 @@ from tqdm.auto import tqdm
 
 
 class Extractor(threading.Thread):
-    def __init__(self, env, msg="Default debugger"):
+    def __init__(self, env):
         threading.Thread.__init__(self)
         self.queue = Queue()
         self.daemon = True
@@ -88,7 +87,7 @@ def main(args):
     model, _ = torchutils.backbone(backbone)
     model.cuda()
     model.eval()
-    env = lmdb.open(lmdb_dir, map_size=2 ** 40)
+    env = lmdb.open(lmdb_dir, map_size=2**40)
     extractor = Extractor(env)
     extractor.start()
     for names, x in tqdm(loader, desc="Extract features"):
@@ -102,7 +101,8 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Extract feature from given backbone.",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--data-dir")
     parser.add_argument("--feature-dir")

@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torchutils
 
-
 if __name__ == "__main__":
     input_dir = "release"
     files = ["train.json", "valid.json", "test.json"]
@@ -22,7 +21,7 @@ if __name__ == "__main__":
     bins = np.arange(2, 19) + 0.5
     plt.hist(nondisjoint, density=True, alpha=0.5, bins=bins, label="Polyvore Outfits")
     plt.hist(disjoint, density=True, alpha=0.5, bins=bins, label="Polyvore Outfits-D")
-    plt.title("Histgram of outfit length ")
+    plt.title("Histogram of outfit length ")
     plt.xlabel("Number of items")
     plt.ylabel("Density")
     plt.legend()

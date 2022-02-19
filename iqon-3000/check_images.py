@@ -22,7 +22,7 @@ def get_link(path):
 
 
 def check_image(img_path):
-    """Check wether an image is broken and re-download when it is broken"""
+    """Check whether an image is broken and re-download when it is broken"""
     try:
         with open(img_path, "rb") as f:
             Image.open(f).convert("RGB")
@@ -48,7 +48,7 @@ def check_image(img_path):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Check download images.", formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+        description="Check download images.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--image-dir", default="raw/images")
     parser.add_argument("--image-size", default="middle")
