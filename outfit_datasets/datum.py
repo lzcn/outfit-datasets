@@ -1,3 +1,4 @@
+import os
 from typing import List
 
 import numpy as np
@@ -16,7 +17,7 @@ class Datum(object):
 
     Args:
         item_list (List[List]): list for item keys. ``item_list[c][i]`` is the ``key``
-            for i-th item in c-th category.
+            for i-th item in c-th category. If None, we use i as the key.
         reader (DataReader): the data reader.
     """
 
@@ -41,7 +42,7 @@ class Datum(object):
             if cate == -1:
                 continue
             else:
-                key = self.item_list[cate][item]
+                key = self.item_list[cate][item] if self.item_list is not None else str(item)
                 keys.append(key)
         while len(keys) < max_size:
             keys.append(keys[-1])
@@ -57,7 +58,7 @@ class Datum(object):
         Returns:
             torch.Tensor: item data
         """
-        key = self.item_list[item_type][item_id]
+        key = self.item_list[item_type][item_id] if self.item_list is not None else str(item_id)
         return self.reader(key)
 
     def get_data(self, item_id: List, item_type: List, max_size: int = 1) -> torch.Tensor:
@@ -80,13 +81,16 @@ def getDatum(param: OutfitLoaderParam) -> List[Datum]:
     """Datum factory.
 
     Args:
-        param (DataParam): parameters
+        param (OutfitLoaderParam): outfit data loader parameters
 
     Returns:
         List[Datum]: a list of datum
     """
     datums = []
-    item_list = torchutils.io.load_json(param.item_list_fn)
+    if os.path.exists(param.item_list_fn):
+        item_list = torchutils.io.load_json(param.item_list_fn)
+    else:
+        item_list = None
     for reader_param in param.readers:
         reader = getReader(param=reader_param)
         datums.append(Datum(item_list, reader))

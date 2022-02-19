@@ -3,14 +3,23 @@ import os
 
 import numpy as np
 import torchutils
-from torch.utils.data import DataLoader
-from torchutils import colour
-
 from outfit_datasets.dataset import getOutfitData
 from outfit_datasets.datum import getDatum
 from outfit_datasets.param import OutfitLoaderParam
+from torch.utils.data import DataLoader
+from torchutils import colour
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _back_compatibility(tuples):
+    if tuples.shape[1] % 2 == 0:
+        return tuples
+    else:
+        uids = tuples[:, :1]
+        item_ids, item_types = np.split(tuples[:,1:], 2, axis=1)
+        length = (item_ids != -1).sum(axis=-1).reshape((-1, 1))
+        return np.hstack((uids, length, item_ids, item_types))
 
 
 class OutfitLoader(object):
@@ -39,6 +48,7 @@ class OutfitLoader(object):
             neg_fn = param.neg_fn
         if os.path.exists(pos_fn):
             self.pos_data = np.array(torchutils.io.load_csv(pos_fn, converter=int))
+            self.pos_data = _back_compatibility(self.pos_data)
             LOGGER.info("Load positive tuples")
             LOGGER.info("Positive tuples shape: %s", colour(f"{self.pos_data.shape}"))
         else:
@@ -46,6 +56,7 @@ class OutfitLoader(object):
             LOGGER.error("Positive tuples does not exist")
         if os.path.exists(neg_fn):
             self.neg_data = np.array(torchutils.io.load_csv(neg_fn, converter=int))
+            self.neg_data = _back_compatibility(self.neg_data)
             LOGGER.info("Load negative tuples")
             LOGGER.info("Nagative tuples shape: %s", colour(f"{self.neg_data.shape}"))
         else:
