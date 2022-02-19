@@ -1,9 +1,12 @@
+import logging
 from typing import List
 
 import numpy as np
 
 NONE_TYPE = -1
 INDEX_BOUND = 2
+
+LOGGER = logging.getLogger(__name__)
 
 
 def split_tuple(tuples: np.ndarray) -> List[np.ndarray]:
@@ -30,7 +33,11 @@ def infer_max_size(tuples: np.ndarray) -> int:
     Returns:
         int: max size
     """
-    return (tuples.shape[1] - 2) // 2
+    max_shape = (tuples.shape[1] - 2) // 2
+    max_size = np.max(split_tuple(tuples)[1])
+    if max_size != max_shape:
+        LOGGER.warn("Tuples is not compact")
+    return max_size
 
 
 def infer_num_type(tuples: np.ndarray) -> int:
