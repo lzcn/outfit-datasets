@@ -166,6 +166,51 @@ class RandomMix(Generator):
         return f"ratio={self.ratio}, type_aware={self.type_aware}"
 
 
+class RandomHard(Generator):
+    r"""Return Randomly outfits sampled from other users.
+
+    Args:
+
+        ratio (int): ratio of negative outfits to be sampled for each positive outfit.
+
+    """
+
+    def __init__(self, ratio: int = 1, **kwargs):
+        super().__init__()
+        self.ratio = ratio
+
+    def run(self, data: np.ndarray) -> np.ndarray:
+        """Random mixing items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
+        pos_uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
+        neg_uids = pos_uids.repeat(self.ratio, axis=0).reshape((-1, 1))
+        neg_sizes = []
+        neg_types = []
+        neg_items = []
+        num_outfits = len(pos_uids)
+        for uid in neg_uids:
+            sampled_user = uid
+            while sampled_user == uid:
+                idx = np.random.randint(num_outfits)
+                sampled_user = pos_uids[idx]
+            neg_items.append(pos_items[idx])
+            neg_types.append(pos_types[idx])
+            neg_sizes.append(pos_sizes[idx])
+        neg_sizes = np.array(neg_sizes).reshape((-1, 1))
+        neg_items = np.array(neg_items)
+        neg_types = np.array(neg_types)
+        return np.hstack([neg_uids, neg_sizes, neg_items, neg_types])
+
+    def extra_repr(self) -> str:
+        return f"ratio={self.ratio}"
+
+
 class RandomAddon(Generator):
     def __init__(self, ratio: int = 1, **kwargs):
         super().__init__()
