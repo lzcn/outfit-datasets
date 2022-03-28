@@ -117,7 +117,7 @@ class RunParam(Param):
     summary_interval: int = attr.ib(default=10)
     display_interval: int = attr.ib(default=50)
     load_trained: str = attr.ib(default=None)
-    log_dir: str = attr.ib(default=None)
+    log_dir: str = attr.ib(default="summaries/log")
     log_level: str = attr.ib(default="INFO")
     gpus: Union[int, list] = attr.ib(default=0)
     num_runs: int = attr.ib(default=1)
