@@ -1,15 +1,18 @@
 #!/usr/bin/env python
+# WIP
 # %%
+
 import os
-import torchutils
-import numpy as np
-from tqdm.auto import tqdm
+
 import matplotlib.pyplot as plt
+import numpy as np
+import torchutils
+from tqdm.auto import tqdm
 
 # %%
 
-dataDir = "raw"
-outputDir = "processed"
+dataDir = "ifashon/release"
+outputDir = "ifashion/processed"
 os.makedirs(outputDir, exist_ok=True)
 
 # %%
