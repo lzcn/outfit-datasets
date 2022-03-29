@@ -3,6 +3,7 @@ from typing import List
 
 import numpy as np
 import torch
+
 from outfit_datasets.datum import Datum
 from outfit_datasets.generator import Generator, getGenerator
 from outfit_datasets.param import OutfitDataParam
@@ -64,8 +65,7 @@ class BaseOutfitData(object):
         self.process()
 
     def process(self):
-        """Prepare tuples for one epoch.
-        """
+        """Prepare tuples for one epoch."""
         raise NotImplementedError
 
     def names(self, n):
@@ -126,6 +126,7 @@ class NPairOutfit(BaseOutfitData):
 
     Return a list of outfits with the first one being the positive and the others being negatives.
     """
+
     def __getitem__(self, n):
         # in current implementation, pos_types == neg_types
         items = []
@@ -296,28 +297,35 @@ class NegativeOutfit(PointwiseOutfit):
 
 
 class FITB(PointwiseOutfit):
-    r"""Generate outfits for FITB task.
+    """PointwiseOutfit for FITB task.
 
-        pos_data: positive outfits
-        neg_data: negative outfits
+    pos_data: [ o_1, ..., o_i, ..., o_n, ], where o_i is positive outfit
+    neg_data: [
+        o_11, ..., o_1j, ..., o_1s,
+        ...,
+        o_i1, ..., o_ij, ..., o_is,
+        ...
+        o_n1, ..., o_nj, ..., o_ns,
+    ], where o_ij is the j-th negative outfit for i-th positive
+
     """
 
     def process(self):
-        ratio = len(self.neg_data) // len(self.pos_data)
         num_questions = len(self.pos_data)
-        num_answers = len(self.neg_data) // len(self.pos_data) + 1
+        num_negatives = len(self.neg_data) // len(self.pos_data)
+        num_answers = num_negatives + 1
         self.logger.info("Number of FITB questions: %s", num_questions)
         self.logger.info("Number of FITB answers: %s", num_answers)
-        pos_data = self.pos_data
-        neg_data = self.neg_data.reshape((num_questions, -1))
-        outfits = np.hstack((pos_data, neg_data))
-        outfits = outfits.reshape((num_questions * num_answers, -1))
+        pos_data = self.pos_data.reshape((num_questions, 1, -1))
+        neg_data = self.neg_data.reshape((num_questions, num_negatives, -1))
+        # num_questions x num_answers
+        outfits = np.concatenate((pos_data, neg_data), axis=1).reshape((num_questions * num_answers, -1))
         pos_label = np.ones((num_questions, 1), dtype=np.int64)
-        neg_label = np.zeros((num_questions, ratio), dtype=np.int64)
+        neg_label = np.zeros((num_questions, num_negatives), dtype=np.int64)
         self.labels = np.hstack((pos_label, neg_label)).reshape((-1, 1))
         self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(outfits)
         # find the index for answer item
-        mask = self.neg_data.reshape(num_questions, num_answers - 1, -1)[:, 0, :] == self.pos_data
+        mask = neg_data[:, 0, :] == pos_data[:, 0, :]
         # the index of answer item
         index_mask = ~utils.split_tuple(mask)[2]
         assert index_mask.sum() == num_questions
@@ -343,8 +351,7 @@ class FITB(PointwiseOutfit):
 
 
 class OutlierOutfit(PointwiseOutfit):
-    r"""Generate outfits with outlier items.
-    """
+    r"""Generate outfits with outlier items."""
 
     def process(self):
         ratio = len(self.neg_data) // len(self.pos_data)
@@ -373,8 +380,7 @@ class OutlierOutfit(PointwiseOutfit):
 
 
 class AddonOutlierOutfit(PointwiseOutfit):
-    r"""Generate outfits with outlier items.
-    """
+    r"""Generate outfits with outlier items."""
 
     def process(self):
         self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(self.neg_data)

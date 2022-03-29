@@ -17,9 +17,20 @@ def _back_compatibility(tuples):
         return tuples
     else:
         uids = tuples[:, :1]
-        item_ids, item_types = np.split(tuples[:,1:], 2, axis=1)
+        item_ids, item_types = np.split(tuples[:, 1:], 2, axis=1)
         length = (item_ids != -1).sum(axis=-1).reshape((-1, 1))
         return np.hstack((uids, length, item_ids, item_types))
+
+
+def _load_tuples(file, extra_info=""):
+    if os.path.exists(file):
+        data = np.array(torchutils.io.load_csv(file, converter=int))
+        data = _back_compatibility(data)
+        LOGGER.info("Load {} tuples with shape: {}".format(colour(extra_info), colour(str(data.shape))))
+    else:
+        data = None
+        LOGGER.warning("{} tuples does not exist".format(colour(extra_info)))
+    return data
 
 
 class OutfitLoader(object):
@@ -40,40 +51,31 @@ class OutfitLoader(object):
             "DataLoader: batch size (%s), number of workers (%s)", colour(param.batch_size), colour(param.num_workers)
         )
         self.num_users = param.num_users
-        if param.dataset.data_mode == "FITB":
-            pos_fn = param.pos_fitb_fn
-            neg_fn = param.neg_fitb_fn
-        else:
-            pos_fn = param.pos_fn
-            neg_fn = param.neg_fn
-        if os.path.exists(pos_fn):
-            self.pos_data = np.array(torchutils.io.load_csv(pos_fn, converter=int))
-            self.pos_data = _back_compatibility(self.pos_data)
-            LOGGER.info("Load positive tuples")
-            LOGGER.info("Positive tuples shape: %s", colour(f"{self.pos_data.shape}"))
-        else:
-            self.pos_data = None
-            LOGGER.error("Positive tuples does not exist")
-        if os.path.exists(neg_fn):
-            self.neg_data = np.array(torchutils.io.load_csv(neg_fn, converter=int))
-            self.neg_data = _back_compatibility(self.neg_data)
-            LOGGER.info("Load negative tuples")
-            LOGGER.info("Negative tuples shape: %s", colour(f"{self.neg_data.shape}"))
-        else:
-            self.neg_data = None
-            LOGGER.warning("Negative tuples does not exist")
+        self.pos_data = _load_tuples(param.pos_fn)
+        self.neg_data = _load_tuples(param.neg_fn)
+        self.fitb_data = _load_tuples(param.fitb_fn)
         if param.dataset.data_mode == "FITB":
             self.param.shuffle = False
-            self.num_questions = len(self.pos_data)
-            if self.neg_data is None:
-                self.num_fitb_choices = param.dataset.neg_param.get("ratio", 1) + 1
+            if param.dataset.neg_mode == "Fix":
+                # use pre-defiend FITB tuples
+                assert self.fitb_data is not None, "Must provide {}_fitb for FITB task".format(param.phase)
+                num_answers = param.num_fitb_choices
+                num_questions = len(self.fitb_data) // num_answers
+                num_cols = self.fitb_data.shape[-1]
+                fitb_data = self.fitb_data.reshape((num_questions, num_answers, -1))
+                pos_data, neg_data = fitb_data[:, 0, :], fitb_data[:, 1:, :]
+                self.pos_data = pos_data.reshape((-1, num_cols))
+                self.neg_data = neg_data.reshape((-1, num_cols))
             else:
-                self.num_fitb_choices = len(self.neg_data) // len(self.pos_data) + 1
+                # generate tuples for each run
+                num_answers = param.dataset.neg_param.get("ratio", 1) + 1
+                num_questions = len(self.pos_data)
             LOGGER.info("Summary for fill-in-the-blank data set")
-            LOGGER.info("Number of FITB questions: %s", colour(f"{self.num_questions:,}"))
-            LOGGER.info("Number of FITB answers: %s", colour(self.param.num_fitb_choices))
+            LOGGER.info("Number of FITB questions: %s", colour(f"{num_questions:,}"))
+            LOGGER.info("Number of FITB answers: %s", colour(num_answers))
+            self.num_fitb_choices = num_answers
         else:
-            LOGGER.info("Number of positive outfits: %s", colour(f"{len(self.pos_data):,}"))
+            self.num_fitb_choices = param.num_fitb_choices
         self.datum = getDatum(param)
         self.dataset = getOutfitData(
             datum=self.datum, param=param.dataset, pos_data=self.pos_data, neg_data=self.neg_data

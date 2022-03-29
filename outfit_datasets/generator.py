@@ -89,9 +89,7 @@ class Identity(Generator):
 
 
 class Resample(Generator):
-    r"""Resample a subset of input tuples.
-
-    """
+    r"""Resample a subset of input tuples."""
 
     def __init__(self, ratio: float = 0.3, **kwargs):
         super().__init__()
