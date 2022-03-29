@@ -101,8 +101,7 @@ def main(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract feature from given backbone.",
-        formatter_class=argparse.ArgumentDefaultsHelpFormatter
+        description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
     parser.add_argument("--data-dir")
     parser.add_argument("--feature-dir")

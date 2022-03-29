@@ -33,6 +33,8 @@ from tqdm.auto import tqdm
 
 
 # %%
+
+
 def get_item_type(item):
     return item["index"] - 1
 
@@ -48,8 +50,9 @@ def load_json(fn):
 
 
 # %%
-inputDir = "release"
-outputDir = "processed"
+
+inputDir = "maryland-polyvore/release"
+outputDir = "maryland-polyvore/processed"
 
 CHECK_IMAGES = False
 MAKE_LMDB = False
@@ -184,6 +187,8 @@ if CHECK_IMAGES:
 # ## Convert to outfit to tuples
 
 # %%
+
+
 def convert_to_tuples(outfits):
     tuples = []
     for outfit in outfits:
@@ -201,28 +206,24 @@ def convert_to_tuples(outfits):
 
 
 # %%
-trainTuples = convert_to_tuples(trainOutfits)
-validTuples = convert_to_tuples(validOutfits)
-testTuples = convert_to_tuples(testOutfits)
+train_pos = convert_to_tuples(trainOutfits)
+valid_pos = convert_to_tuples(validOutfits)
+test_pos = convert_to_tuples(testOutfits)
 
 
 # %%
-with open(f"{outputDir}/original/train_pos", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(trainTuples)
 
-with open(f"{outputDir}/original/valid_pos", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(validTuples)
-
-with open(f"{outputDir}/original/test_pos", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(testTuples)
+# save all positive outfits
+torchutils.io.save_csv(f"{outputDir}/original/train_pos", train_pos)
+torchutils.io.save_csv(f"{outputDir}/original/valid_pos", valid_pos)
+torchutils.io.save_csv(f"{outputDir}/original/test_pos", test_pos)
 
 # %% [markdown]
 # ## Convert FITB and Negative tuples
 
 # %%
+
+
 def convert_compatibility(data):
     eval_pos = []
     eval_neg = []
@@ -248,18 +249,17 @@ with open(f"{inputDir}/label/fashion_compatibility_prediction.txt") as f:
     lines = f.readlines()
 eval_pos, eval_neg = convert_compatibility(lines)
 # the positive tuples should match those in compatibility
-assert (testTuples == eval_pos).all()
+assert (test_pos == eval_pos).all()
 print("Number of positive outfits: {:,}".format(len(eval_pos)))
 print("Number of negative outfits: {:,}".format(len(eval_neg)))
 
 
 # %%
-with open(f"{outputDir}/original/test_neg", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(eval_neg)
-
+torchutils.io.save_csv(f"{outputDir}/original/test_neg", eval_neg)
 
 # %%
+
+
 def convert_fitb(data):
     tuples = []
     for d in data:
@@ -269,9 +269,9 @@ def convert_fitb(data):
         question_items = [itemReIndex[c][name2Id[i]] for i, c in zip(question, question_types)]
         size = len(question) + 1
         m = MAX_SIZE - size
-        for ans in d["answers"]:
-            c = int(ans.split("_")[-1]) - 1
-            i = itemReIndex[c][name2Id[ans]]
+        for answer in d["answers"]:
+            c = int(answer.split("_")[-1]) - 1
+            i = itemReIndex[c][name2Id[answer]]
             items = question_items.copy()
             types = question_types.copy()
             items.insert(position - 1, i)
@@ -284,16 +284,15 @@ def convert_fitb(data):
 # %%
 with open(f"{inputDir}/label/fill_in_blank_test.json") as f:
     data = json.load(f)
-    tuples = convert_fitb(data)
 
-with open(f"{outputDir}/original/test_fitb", "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(tuples)
+test_fitb = convert_fitb(data)
+torchutils.io.save_csv(f"{outputDir}/original/test_fitb", test_fitb)
 
 # %% [markdown]
 # ## Tuples from type-aware embedding
 
 # %%
+
 dst_dir = f"{outputDir}/hardneg"
 src_dir = f"{inputDir}/maryland_polyvore_hardneg/"
 
@@ -302,7 +301,7 @@ torchutils.io.save_json(f"{dst_dir}/items.json", itemList)
 
 # %%
 splits = ["train", "valid", "test"]
-outfits = dict(train=trainTuples, valid=validTuples, test=testTuples)
+outfits = dict(train=train_pos, valid=valid_pos, test=test_pos)
 for phase in splits:
     fn = os.path.join(src_dir, "compatibility_{}.txt".format(phase))
     with open(fn) as f:
@@ -319,6 +318,6 @@ for phase in splits:
 splits = ["train", "valid", "test"]
 for phase in splits:
     data = torchutils.io.load_json(os.path.join(src_dir, "fill_in_blank_{}.json".format(phase)))
-    tuples = convert_fitb(data)
-    torchutils.io.save_csv(os.path.join(dst_dir, "{}_fitb".format(phase)), tuples)
-    print("Number of questions ({}): {:,}".format(phase, len(tuples) // 4))
+    test_fitb = convert_fitb(data)
+    torchutils.io.save_csv(os.path.join(dst_dir, "{}_fitb".format(phase)), test_fitb)
+    print("Number of questions ({}): {:,}".format(phase, len(test_fitb) // 4))
