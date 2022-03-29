@@ -1,11 +1,12 @@
+#!/usr/bin/env python
 # %%
 import os
 
 import torchutils
 
 # %%
-inputDir = "release"
-outputDir = "processed"
+inputDir = "polyvore-180/release"
+outputDir = "polyvore-180/processed"
 os.makedirs(f"{outputDir}/original", exist_ok=True)
 
 

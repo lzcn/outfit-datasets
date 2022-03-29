@@ -1,11 +1,14 @@
+#!/usr/bin/env python
 # %%
+
+# WIP: do not use
 import os
 
 import torchutils
 
 # %%
-inputDir = "release"
-outputDir = "processed"
+inputDir = "polyvore-180/release"
+outputDir = "polyvore-180/processed"
 os.makedirs(f"{outputDir}/hfgn", exist_ok=True)
 
 
@@ -113,12 +116,14 @@ outfit_index_map = dict()
 for n, outfit in enumerate(all_outfits):
     outfit_index_map[outfit] = n
 
-print("Number of outfits:", len(all_outfits), "Number of used times:", n_outfits)
+print("Number of outfits:", len(all_outfits))
+print("Number of used times:", n_outfits)
 
 
 # %%
 
 # create user-outfit tuples
+
 
 # %%
 
