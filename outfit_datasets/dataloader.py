@@ -53,6 +53,11 @@ class OutfitLoader(object):
             LOGGER.info("Number of FITB questions: %s", colour(f"{num_questions:,}"))
             LOGGER.info("Number of FITB answers: %s", colour(num_answers))
             self.num_fitb_choices = num_answers
+        elif param.dataset.data_mode == "Retrieval":
+            self.param.shuffle = False
+            self.pos_data = utils.load_outfit_tuples(param.retrieval_fn, "retrieval")
+            assert self.pos_data is not None, "Must provide retrieval tuples for this task"
+            self.num_retrieval_outfits = len(self.pos_data)
         else:
             self.num_fitb_choices = param.num_fitb_choices
         self.datum = getDatum(param)

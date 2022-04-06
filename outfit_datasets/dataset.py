@@ -350,6 +350,49 @@ class FITB(PointwiseOutfit):
         )
 
 
+class Retrieval(PointwiseOutfit):
+    """PointwiseOutfit for retrieval task."""
+
+    def process(self):
+        num_outfits = len(self.pos_data)
+        num_negatives = len(self.neg_data) // len(self.pos_data)
+        num_retrieval = num_negatives + 1
+        self.logger.info("Number of retrieval queries: %s", num_outfits)
+        self.logger.info("Number of retrieval items: %s", num_retrieval)
+        pos_data = self.pos_data.reshape((num_outfits, 1, -1))
+        neg_data = self.neg_data.reshape((num_outfits, num_negatives, -1))
+        # num_questions x num_answers
+        outfits = np.concatenate((pos_data, neg_data), axis=1).reshape((num_outfits * num_retrieval, -1))
+        pos_label = np.ones((num_outfits, 1), dtype=np.int64)
+        neg_label = np.zeros((num_outfits, num_negatives), dtype=np.int64)
+        self.labels = np.hstack((pos_label, neg_label)).reshape((-1, 1))
+        self.uidxs, self.sizes, self.items, self.types = utils.split_tuple(outfits)
+        # find the index for answer item
+        mask = neg_data[:, 0, :] == pos_data[:, 0, :]
+        # the index of answer item
+        index_mask = ~utils.split_tuple(mask)[2]
+        assert index_mask.sum() == num_outfits
+        _, item_index = np.where(index_mask)
+        self.item_index = item_index.repeat(num_retrieval)
+        assert len(self.item_index) == len(self.labels)
+
+    def __getitem__(self, n):
+        items, types = self.items[n], self.types[n]
+        # m x n x data_shape
+        data = [datum.get_data(items, types, self.max_size) for datum in self.datum]
+        data = data[0] if len(self.datum) == 1 else data
+        cate = torch.tensor(types)
+        return dict(
+            size=self.sizes[n],
+            label=self.labels[n],
+            uidx=self.uidxs[n],
+            data=data,
+            name=",".join(self.datum[0].get_key(items, types, self.max_size)),
+            cate=cate,
+            index=self.item_index[n],
+        )
+
+
 class OutlierOutfit(PointwiseOutfit):
     r"""Generate outfits with outlier items."""
 

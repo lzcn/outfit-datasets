@@ -89,6 +89,7 @@ class OutfitLoaderParam(Param):
     # pos_fitb_fn: str = attr.ib(init=False, repr=False)
     # neg_fitb_fn: str = attr.ib(init=False, repr=False)
     # fitb_fn: str = attr.ib(init=False, repr=False)
+    # retrieval_fn: str = attr.ib(init=False, repr=False)
 
     def __attrs_post_init__(self):
         data_root = os.path.expanduser(self.data_root)
@@ -100,6 +101,7 @@ class OutfitLoaderParam(Param):
         self.pos_fitb_fn = os.path.join(data_root, f"{self.phase}_pos_fitb")
         self.neg_fitb_fn = os.path.join(data_root, f"{self.phase}_neg_fitb")
         self.fitb_fn = os.path.join(data_root, f"{self.phase}_fitb")
+        self.retrieval_fn = os.path.join(data_root, "retrieval")
         self.item_list_fn = os.path.join(data_root, "items.json")
 
 

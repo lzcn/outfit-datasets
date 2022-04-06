@@ -368,6 +368,47 @@ class FITB(Generator):
         return f"ratio={self.ratio}, type_aware={self.type_aware}"
 
 
+class Retrieval(Generator):
+    def __init__(self, ratio=1, type_id=0, **kwargs):
+        super().__init__()
+        self.ratio = ratio
+        self.type_id = type_id
+
+    def run(self, data: np.ndarray) -> np.ndarray:
+        """Randomly replace :math:`n` items.
+
+        Args:
+            data (np.ndarray): positive tuples
+
+        Returns:
+            np.ndarray: negative tuples
+        """
+        pos_uidxs, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
+        item_list = utils.get_item_list(data)
+        num_retrieval = len(item_list[self.type_id]) - 1
+        neg_uidxs = pos_uidxs.repeat(num_retrieval, axis=0).reshape((-1, 1))
+        neg_sizes = pos_sizes.repeat(num_retrieval, axis=0).reshape((-1, 1))
+        neg_types = pos_types.repeat(num_retrieval, axis=0)
+        neg_items = []
+        for items, types in zip(pos_items, pos_types):
+            results = np.where(types == self.type_id)[0]
+            assert len(results) > 0
+            replace_index = results[0]
+            assert self.type_id == types[replace_index]
+            target_item = items[replace_index]
+            item_set = set(item_list[self.type_id])
+            item_set.remove(target_item)
+            retrieval_items = items.reshape((1, -1)).repeat(num_retrieval, axis=0)
+            retrieval_items[:, replace_index] = np.array(list(item_set))
+            neg_items.append(retrieval_items)
+        neg_items = np.vstack(neg_items)
+        neg_data = np.hstack((neg_uidxs, neg_sizes, neg_items, neg_types))
+        return neg_data
+
+    def extra_repr(self) -> str:
+        return f"type_id={self.type_id}"
+
+
 def getGenerator(mode: str, data=None, **kwargs) -> Generator:
     r"""Get outfit tuple generator.
 
