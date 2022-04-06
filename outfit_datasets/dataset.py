@@ -59,7 +59,7 @@ class BaseOutfitData(object):
         self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
         self.logger.info("Generating negative tuples.")
         self.neg_data = self.neg_generator(self.pos_data)
-        self.logger.info("Negative tuples shape: {}".format(self.pos_data.shape))
+        self.logger.info("Negative tuples shape: {}".format(self.neg_data.shape))
         self.max_size = utils.infer_max_size(self.pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
         self.process()
