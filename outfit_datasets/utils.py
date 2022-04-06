@@ -1,12 +1,37 @@
 import logging
+import os
 from typing import List
 
 import numpy as np
+import torchutils
+from torchutils import colour
 
 NONE_TYPE = -1
 INDEX_BOUND = 2
 
 LOGGER = logging.getLogger(__name__)
+
+
+def _back_compatibility(tuples):
+    if tuples.shape[1] % 2 == 0:
+        return tuples
+    else:
+        uids = tuples[:, :1]
+        item_ids, item_types = np.split(tuples[:, 1:], 2, axis=1)
+        length = (item_ids != -1).sum(axis=-1).reshape((-1, 1))
+        return np.hstack((uids, length, item_ids, item_types))
+
+
+def load_outfit_tuples(file, extra_info=""):
+    """Load outfit tuples from file."""
+    if os.path.exists(file):
+        data = np.array(torchutils.io.load_csv(file, converter=int))
+        data = _back_compatibility(data)
+        LOGGER.info("Load {} tuples with shape: {}".format(colour(extra_info), colour(str(data.shape))))
+    else:
+        data = None
+        LOGGER.warning("The {} tuples does not exist".format(colour(extra_info)))
+    return data
 
 
 def split_tuple(tuples: np.ndarray) -> List[np.ndarray]:

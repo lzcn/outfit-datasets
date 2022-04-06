@@ -135,9 +135,13 @@ class RandomMix(Generator):
             np.ndarray: negative tuples
         """
         item_list = utils.get_item_list(data)
+        num_items = list(map(len, item_list))
         num_types = utils.infer_num_type(data)
         max_items = utils.infer_max_size(data)
-        self.logger.info("Sampling x%d outfits from set %s", self.ratio, str(list(map(len, item_list))))
+        if self.type_aware:
+            self.logger.info("Sampling {}x outfits from {:,} sets: {}".format(self.ratio, len(item_list), num_items))
+        else:
+            self.logger.info("Sampling {}x outfits from {:,} items".format(self.ratio, np.sum(num_items)))
         pos_uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         neg_uids = pos_uids.repeat(self.ratio, axis=0).reshape((-1, 1))
         neg_sizes = pos_sizes.repeat(self.ratio, axis=0).reshape((-1, 1))

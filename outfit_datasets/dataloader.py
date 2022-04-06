@@ -1,36 +1,15 @@
 import logging
-import os
 
-import numpy as np
-import torchutils
-from outfit_datasets.dataset import getOutfitData
-from outfit_datasets.datum import getDatum
-from outfit_datasets.param import OutfitLoaderParam
 from torch.utils.data import DataLoader
 from torchutils import colour
 
+from outfit_datasets.dataset import getOutfitData
+from outfit_datasets.datum import getDatum
+from outfit_datasets.param import OutfitLoaderParam
+
+from . import utils
+
 LOGGER = logging.getLogger(__name__)
-
-
-def _back_compatibility(tuples):
-    if tuples.shape[1] % 2 == 0:
-        return tuples
-    else:
-        uids = tuples[:, :1]
-        item_ids, item_types = np.split(tuples[:, 1:], 2, axis=1)
-        length = (item_ids != -1).sum(axis=-1).reshape((-1, 1))
-        return np.hstack((uids, length, item_ids, item_types))
-
-
-def _load_tuples(file, extra_info=""):
-    if os.path.exists(file):
-        data = np.array(torchutils.io.load_csv(file, converter=int))
-        data = _back_compatibility(data)
-        LOGGER.info("Load {} tuples with shape: {}".format(colour(extra_info), colour(str(data.shape))))
-    else:
-        data = None
-        LOGGER.warning("{} tuples does not exist".format(colour(extra_info)))
-    return data
 
 
 class OutfitLoader(object):
@@ -51,19 +30,19 @@ class OutfitLoader(object):
             "DataLoader: batch size (%s), number of workers (%s)", colour(param.batch_size), colour(param.num_workers)
         )
         self.num_users = param.num_users
-        self.pos_data = _load_tuples(param.pos_fn)
-        self.neg_data = _load_tuples(param.neg_fn)
-        self.fitb_data = _load_tuples(param.fitb_fn)
+        self.pos_data = utils.load_outfit_tuples(param.pos_fn, param.phase)
+        self.neg_data = utils.load_outfit_tuples(param.neg_fn, param.phase)
         if param.dataset.data_mode == "FITB":
             self.param.shuffle = False
             if param.dataset.neg_mode == "Fix":
                 # use pre-defiend FITB tuples
-                assert self.fitb_data is not None, "Must provide {}_fitb for FITB task".format(param.phase)
+                tuples = utils.load_outfit_tuples(param.fitb_fn, f"{param.phae}-fitb")
+                assert tuples is not None, "Must provide {}_fitb for FITB task".format(param.phase)
                 num_answers = param.num_fitb_choices
-                num_questions = len(self.fitb_data) // num_answers
-                num_cols = self.fitb_data.shape[-1]
-                fitb_data = self.fitb_data.reshape((num_questions, num_answers, -1))
-                pos_data, neg_data = fitb_data[:, 0, :], fitb_data[:, 1:, :]
+                num_questions = len(tuples) // num_answers
+                num_cols = tuples.shape[-1]
+                fitb_data = tuples.reshape((num_questions, num_answers, -1))
+                pos_data, neg_data = fitb_data[:, 1, :], fitb_data[:, 1:, :]
                 self.pos_data = pos_data.reshape((-1, num_cols))
                 self.neg_data = neg_data.reshape((-1, num_cols))
             else:

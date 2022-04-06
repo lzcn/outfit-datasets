@@ -86,9 +86,9 @@ class OutfitLoaderParam(Param):
     # non-configurable attributes
     pos_fn: str = attr.ib(init=False)
     neg_fn: str = attr.ib(init=False)
-    pos_fitb_fn: str = attr.ib(init=False)
-    neg_fitb_fn: str = attr.ib(init=False)
-    fitb_fn: str = attr.ib(init=False)
+    # pos_fitb_fn: str = attr.ib(init=False, repr=False)
+    # neg_fitb_fn: str = attr.ib(init=False, repr=False)
+    # fitb_fn: str = attr.ib(init=False, repr=False)
 
     def __attrs_post_init__(self):
         data_root = os.path.expanduser(self.data_root)
