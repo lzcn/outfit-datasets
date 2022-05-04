@@ -24,13 +24,16 @@ def _back_compatibility(tuples):
 
 def load_outfit_tuples(file, extra_info=""):
     """Load outfit tuples from file."""
+    if not extra_info:
+        extra_info = "\b"
     if os.path.exists(file):
+        LOGGER.info("Loading tuples from file: {}".format(file))
         data = np.array(torchutils.io.load_csv(file, converter=int))
         data = _back_compatibility(data)
-        LOGGER.info("Load {} tuples with shape: {}".format(colour(extra_info), colour(str(data.shape))))
+        LOGGER.info("Loaded {} tuples with shape: {}".format(colour(extra_info), colour(str(data.shape))))
     else:
         data = None
-        LOGGER.warning("The {} tuples does not exist".format(colour(extra_info)))
+        LOGGER.warning("File {} does not exist".format(file))
     return data
 
 

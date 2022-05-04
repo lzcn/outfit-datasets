@@ -30,8 +30,8 @@ class OutfitLoader(object):
             "DataLoader: batch size (%s), number of workers (%s)", colour(param.batch_size), colour(param.num_workers)
         )
         self.num_users = param.num_users
-        self.pos_data = utils.load_outfit_tuples(param.pos_fn, param.phase)
-        self.neg_data = utils.load_outfit_tuples(param.neg_fn, param.phase)
+        self.pos_data = utils.load_outfit_tuples(param.pos_fn, f"{param.phase} positive")
+        self.neg_data = utils.load_outfit_tuples(param.neg_fn, f"{param.phase} negative")
         if param.dataset.data_mode == "FITB":
             self.param.shuffle = False
             if param.dataset.neg_mode == "Fix":
