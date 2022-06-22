@@ -9,7 +9,7 @@ from tqdm import tqdm
 if __name__ == "__main__":
     # fmt: off
     parser = argparse.ArgumentParser(description="Make Image LMDB", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument("--output-dit", default="processed/features/images", type=str, help="path for saving lmdb data.")
+    parser.add_argument("--output-dir", default="processed/features/images", type=str, help="path for saving lmdb data.")
     parser.add_argument("--input-dir", default="release", type=str, help="path to the released data directory.")
     args = parser.parse_args()
     # fmt: on
