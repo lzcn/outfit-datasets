@@ -110,10 +110,10 @@ class RunParam(Param):
     r"""Configuration interface for training/testing."""
 
     epochs: int = attr.ib(default=100)
-    data_param: Param = attr.ib(factory=dict, converter=to_param)
-    valid_data_param: Param = attr.ib(factory=dict)
-    test_data_param: Param = attr.ib(factory=dict)
-    train_data_param: Param = attr.ib(factory=dict)
+    data_param: OutfitLoaderParam = attr.ib(factory=dict, converter=to_param)
+    valid_data_param: OutfitLoaderParam = attr.ib(factory=dict)
+    test_data_param: OutfitLoaderParam = attr.ib(factory=dict)
+    train_data_param: OutfitLoaderParam = attr.ib(factory=dict)
     net_param: Param = attr.ib(factory=dict, converter=to_param)
     optim_param: OptimParam = attr.ib(factory=dict)
     summary_interval: int = attr.ib(default=10)
