@@ -1,28 +1,26 @@
+#!/usr/bin/env python
 # %%
-import csv
 import json
 import os
 import pickle as pkl
-from pprint import pprint
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import torchutils
 from tqdm import tqdm
-
+# TODO: clean outfits
 # %%
 inputDir = "release"
 outputDir = "processed"
-# dataSet = "nondisjoint"
-dataSet = "disjoint"
+dataSet = "nondisjoint"
+# dataSet = "disjoint"
 
 dataDir = os.path.join(inputDir, dataSet)
 saveDir = os.path.join(outputDir, dataSet)
 
 os.makedirs(saveDir, exist_ok=True)
 
-saveFile = True
 # %%
 # all imgages saved in item_id.jpg format
 image_files = torchutils.files.scan_files(f"{inputDir}/images", suffix="jpg")
@@ -31,20 +29,24 @@ print("Number of images: {:,}".format(len(image_files)))
 # %% [markdown]
 # ## Example item format
 # ```json
-# {'category_id': '29',
-#  'catgeories': ["Women's Fashion", 'Clothing', 'Shorts'],
-#  'description': 'Blue High Waist Plain Polyester Loose Button Fly Street '
-#                 'Shorts, Size Available: S,M,L,XL S, M, L, XL Plain Blue '
-#                 'Polyester Style: Street.',
-#  'related': ['High waisted jean shorts',
-#              'High-waisted denim shorts',
-#              'Blue shorts',
-#              'High-rise shorts',
-#              'Highwaist shorts',
-#              'Button shorts'],
-#  'semantic_category': 'bottoms',
-#  'title': 'Blue High Waist Buttons Denim Shorts',
-#  'url_name': 'blue high waist buttons denim'}
+# {
+#     "category_id": "29",
+#     "catgeories": ["Women's Fashion", "Clothing", "Shorts"],
+#     "description": "Blue High Waist Plain Polyester Loose Button Fly Street "
+#     "Shorts, Size Available: S,M,L,XL S, M, L, XL Plain Blue "
+#     "Polyester Style: Street.",
+#     "related": [
+#         "High waisted jean shorts",
+#         "High-waisted denim shorts",
+#         "Blue shorts",
+#         "High-rise shorts",
+#         "Highwaist shorts",
+#         "Button shorts",
+#     ],
+#     "semantic_category": "bottoms",
+#     "title": "Blue High Waist Buttons Denim Shorts",
+#     "url_name": "blue high waist buttons denim",
+# }
 # ```
 
 # %%
@@ -76,23 +78,32 @@ print("Number of fine-grained categories: {:,}".format(len(fineGrained2Semantic)
 print("Number of semantic categories: {:,}".format(len(semanticDict)))
 
 print("{:=^30}".format(" Semantic category "))
-pprint(semanticDict)
+print(torchutils.format_display(semanticDict))
 
-# %% [markdown]
-# # Reformat the outfit tuples
-#
 
-# %%
-
+# %% Reformat the outfit tuples
 
 with open(f"{inputDir}/{dataSet}/typespaces.p", "rb") as f:
     types = pkl.load(f)
 
-print("Number of conditions:", len(types))
+print("Number of conditions (original):", len(types))
 data = [[i, j, "+"] for i, j in (types)]
 df = pd.DataFrame(data)
 
 df.pivot(index=0, columns=1, values=2)
+
+
+# %%
+def infer_min_max_size(outfits):
+    min_size = np.inf
+    max_size = -np.inf
+    for outfit in outfits:
+        size = len(outfit["items"])
+        if size < min_size:
+            min_size = size
+        if size > max_size:
+            max_size = size
+    return min_size, max_size
 
 
 # %%
@@ -101,19 +112,22 @@ validOutfits = torchutils.io.load_json(os.path.join(dataDir, "valid.json"))
 testOutfits = torchutils.io.load_json(os.path.join(dataDir, "test.json"))
 
 allOutfits = trainOutfits + validOutfits + testOutfits
-outfit = np.random.choice(allOutfits)
+print("Example outfit: \n{}".format(torchutils.format_display(np.random.choice(trainOutfits))))
+
 print(
     "Number of {} outfits: {:,} = train ({:,}) + valid({:,}) + test({:,})".format(
         dataSet, len(allOutfits), len(trainOutfits), len(validOutfits), len(testOutfits)
     )
 )
-print("Example outfit")
-pprint(outfit)
 
-MAX_SIZE = 0
-for outfit in allOutfits:
-    MAX_SIZE = max(MAX_SIZE, len(outfit["items"]))
-print("Number of items (max): {}".format(MAX_SIZE))
+MIN_SIZE, MAX_SIZE = infer_min_max_size(allOutfits)
+MIN_TRAIN_SIZE, MAX_TRAIN_SIZE = infer_min_max_size(trainOutfits)
+MIN_VALID_SIZE, MAX_VALID_SIZE = infer_min_max_size(validOutfits)
+MIN_TEST_SIZE, MAX_TEST_SIZE = infer_min_max_size(testOutfits)
+print("Outfit size: {:,} - {:,}".format(MIN_SIZE, MAX_SIZE))
+print("Train size: {:,} - {:,}".format(MIN_TRAIN_SIZE, MAX_TRAIN_SIZE))
+print("Valid size: {:,} - {:,}".format(MIN_VALID_SIZE, MAX_VALID_SIZE))
+print("Test size: {:,} - {:,}".format(MIN_TEST_SIZE, MAX_TEST_SIZE))
 
 
 # %%
@@ -132,9 +146,7 @@ for outfit in allOutfits:
 itemList = [sorted(list(items)) for items in itemSet]
 itemIndex = [{key: index for index, key in enumerate(items)} for items in itemList]
 print("Number of items in each category: ", list(map(len, itemList)))
-
-if saveFile:
-    torchutils.io.save_json(f"{saveDir}/items.json", itemList)
+torchutils.io.save_json(f"{saveDir}/items.json", itemList)
 
 
 # %%
@@ -163,10 +175,29 @@ def count_conditions(outfits):
 
 
 # %%
-plt.hist(count_items(trainOutfits), bins=np.arange(MAX_SIZE) + 1.5)
-plt.title("Histogram of traning outfits")
-train_conditions = count_conditions(trainOutfits)
-print("Number conditions: %d" % len(train_conditions))
+def show_statistic(outfits, phase="train"):
+    min_size, max_size = infer_min_max_size(outfits)
+    plt.hist(count_items(outfits), bins=np.arange(min_size - 1, max_size + 1) + 0.5)
+    plt.title("Histogram of outfits ({})".format(phase))
+    num_conditions = count_conditions(outfits)
+    print("Min size: {}".format(min_size))
+    print("Max size: {}".format(max_size))
+    print("Number conditions ({}): {}".format(phase, len(num_conditions)))
+    data = [[i, j, "+"] for i, j in (types)]
+    df = pd.DataFrame(data)
+    return df.pivot(index=0, columns=1, values=2)
+
+
+# %%
+
+print("Number of items ({}):".format(dataSet))
+print(torchutils.format_display({k: v for k, v in enumerate(np.bincount(count_items(allOutfits)))}))
+show_statistic(allOutfits, "all")
+
+# %%
+plt.hist(count_items(trainOutfits), bins=np.arange(MIN_SIZE - 1, MAX_SIZE + 1) + 0.5)
+plt.title("Histogram of outfits (train)")
+print("Number conditions (train): %d" % len(count_conditions(trainOutfits)))
 
 data = [[i, j, "+"] for i, j in (types)]
 df = pd.DataFrame(data)
@@ -175,10 +206,10 @@ df.pivot(index=0, columns=1, values=2)
 
 
 # %%
-plt.hist(count_items(validOutfits), bins=np.arange(MAX_SIZE) + 1.5)
-plt.title("Histogram of traning outfits")
+plt.hist(count_items(validOutfits), bins=np.arange(MIN_SIZE - 1, MAX_SIZE + 1) + 0.5)
+plt.title("Histogram of outfits (valid)")
 valid_conditions = count_conditions(validOutfits)
-print("Number conditions: %d" % len(valid_conditions))
+print("Number conditions (valid): %d" % len(valid_conditions))
 data = [[i, j, "+"] for i, j in (types)]
 df = pd.DataFrame(data)
 
@@ -186,8 +217,8 @@ df.pivot(index=0, columns=1, values=2)
 
 
 # %%
-plt.hist(count_items(testOutfits), bins=np.arange(MAX_SIZE) + 1.5)
-plt.title("Histogram of traning outfits")
+plt.hist(count_items(testOutfits), bins=np.arange(MIN_SIZE - 1, MAX_SIZE + 1) + 0.5)
+plt.title("Histogram of test outfits")
 test_conditions = count_conditions(testOutfits)
 print("Number conditions: %d" % len(test_conditions))
 data = [[i, j, "+"] for i, j in (types)]
@@ -213,20 +244,9 @@ def convert_tuples(outfits, max_size):
 trainTuples = convert_tuples(trainOutfits, MAX_SIZE)
 validTuples = convert_tuples(validOutfits, MAX_SIZE)
 testTuples = convert_tuples(testOutfits, MAX_SIZE)
-
-
-# %%
-with open(os.path.join(saveDir, "train_pos"), "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(trainTuples)
-
-with open(os.path.join(saveDir, "valid_pos"), "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(validTuples)
-
-with open(os.path.join(saveDir, "test_pos"), "w") as f:
-    writer = csv.writer(f)
-    writer.writerows(testTuples)
+torchutils.io.save_csv(f"{saveDir}/train_pos", trainTuples)
+torchutils.io.save_csv(f"{saveDir}/valid_pos", validTuples)
+torchutils.io.save_csv(f"{saveDir}/test_pos", testTuples)
 
 
 # %%
