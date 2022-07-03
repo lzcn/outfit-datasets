@@ -53,7 +53,7 @@ def split_tuple(tuples: np.ndarray) -> List[np.ndarray]:
 
 
 def infer_max_size(tuples: np.ndarray) -> int:
-    """Infer the max size from data.
+    """Infer the max item size from outfit tuples.
 
     Args:
         tuples (np.ndarray): fashion outfit tuples
@@ -62,10 +62,24 @@ def infer_max_size(tuples: np.ndarray) -> int:
         int: max size
     """
     max_shape = (tuples.shape[1] - 2) // 2
-    max_size = np.max(split_tuple(tuples)[1])
+    sizes = split_tuple(tuples)[1]
+    max_size = np.max(sizes)
     if max_size != max_shape:
-        LOGGER.warn("Tuples is not compact")
+        LOGGER.warn("Tuples is not compact, i.e. the last {} colomns are all -1s".format(max_shape - max_size))
     return max_size
+
+
+def infer_max_shape(tuples: np.ndarray) -> int:
+    """Infer the max size from oufit shape.
+
+    Args:
+        tuples (np.ndarray): fashion outfit tuples
+
+    Returns:
+        int: max size
+    """
+    max_shape = (tuples.shape[1] - 2) // 2
+    return max_shape
 
 
 def infer_num_type(tuples: np.ndarray) -> int:

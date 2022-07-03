@@ -137,7 +137,7 @@ class RandomMix(Generator):
         item_list = utils.get_item_list(data)
         num_items = list(map(len, item_list))
         num_types = utils.infer_num_type(data)
-        max_items = utils.infer_max_size(data)
+        max_items = utils.infer_max_shape(data)
         if self.type_aware:
             self.logger.info("Sampling {}x outfits from {:,} sets: {}".format(self.ratio, len(item_list), num_items))
         else:
@@ -148,7 +148,7 @@ class RandomMix(Generator):
         neg_types = []
         neg_items = []
         pos_set = set(map(tuple, pos_items))
-        for item_types in pos_types:
+        for size, item_types in zip(pos_sizes, pos_types):
             n_sampled = 0
             while n_sampled < self.ratio:
                 if self.type_aware:
@@ -156,6 +156,7 @@ class RandomMix(Generator):
                 else:
                     sampled_types = np.random.randint(num_types, size=max_items)
                 sampled_items = [np.random.choice(item_list[i]) for i in sampled_types]
+                sampled_items = sampled_items[:size] + [utils.NONE_TYPE] * (max_items - size)
                 if tuple(sampled_items) not in pos_set:
                     n_sampled += 1
                     neg_items.append(sampled_items)
