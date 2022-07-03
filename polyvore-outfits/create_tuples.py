@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import torchutils
 from tqdm import tqdm
-# TODO: clean outfits
+
 # %%
 inputDir = "release"
 outputDir = "processed"
@@ -265,19 +265,19 @@ print("Number of items: {}, unique items: {}".format(len(name2Id), len(itemSet))
 
 
 # %%
-def compatibility(fn):
+def compatibility(fn, max_size=MAX_SIZE):
     pos_tuples = []
     neg_tuples = []
     with open(fn) as f:
         lines = f.readlines()
     for line in lines:
         label, *outfit = line.split()
-        tpl = [-1] * (2 * MAX_SIZE)
+        tpl = [-1] * (2 * max_size)
         for n, item in enumerate(outfit):
             item_id = name2Id[item]
             item_type = semanticDict[itemType[item_id]]
             tpl[n] = itemIndex[item_type][item_id]
-            tpl[n + MAX_SIZE] = item_type
+            tpl[n + max_size] = item_type
         tpl = [0, len(outfit)] + tpl
         if int(label) == 1:
             pos_tuples.append(tpl)
@@ -287,19 +287,26 @@ def compatibility(fn):
 
 
 # %%
-splits = ["train", "valid", "test"]
-outfits = dict(train=trainTuples, valid=validTuples, test=testTuples)
-save = True
-for phase in splits:
-    compatibility_fn = os.path.join(dataDir, "compatibility_{}.txt".format(phase))
-    pos_tuples, neg_tuples = compatibility(compatibility_fn)
-    assert (pos_tuples == outfits[phase]).all()
-    # save negative outfits into files
-    print(f"Number of {phase} positive outfits: {len(pos_tuples):,}")
-    print(f"Number of {phase} negative outfits: {len(neg_tuples):,}")
-    if save:
-        torchutils.io.save_csv(f"{saveDir}/{phase}_neg", neg_tuples)
+train_pos, train_neg = compatibility(os.path.join(dataDir, "compatibility_train.txt"))
+assert (train_pos == trainTuples).all()
+# save negative outfits into files
+print(f"Number of train positive outfits: {len(train_pos):,}")
+print(f"Number of train negative outfits: {len(train_neg):,}")
+torchutils.io.save_csv(f"{saveDir}/train_neg", train_neg)
 
+valid_pos, valid_neg = compatibility(os.path.join(dataDir, "compatibility_valid.txt"))
+assert (valid_pos == validTuples).all()
+# save negative outfits into files
+print(f"Number of valid positive outfits: {len(valid_pos):,}")
+print(f"Number of valid negative outfits: {len(valid_neg):,}")
+torchutils.io.save_csv(f"{saveDir}/valid_neg", valid_neg)
+
+test_pos, test_neg = compatibility(os.path.join(dataDir, "compatibility_test.txt"))
+assert (test_pos == testTuples).all()
+# save negative outfits into files
+print(f"Number of test positive outfits: {len(test_pos):,}")
+print(f"Number of test negative outfits: {len(test_neg):,}")
+torchutils.io.save_csv(f"{saveDir}/test_neg", test_neg)
 
 # %%
 

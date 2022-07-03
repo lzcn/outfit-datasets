@@ -15,6 +15,7 @@ dataSet = "nondisjoint"
 # dataSet = "disjoint"
 minSize = 3
 maxSize = 9
+numCate = 11
 dataDir = os.path.join(inputDir, dataSet)
 saveDir = os.path.join(outputDir, dataSet + "-0309")
 
@@ -180,6 +181,21 @@ def count_items(outfits):
     return sizes
 
 
+def count_cates(outfits, norm=False):
+    sizes = [set() for _ in range(numCate)]
+    for outfit in outfits:
+        items = outfit["items"]
+        for item in items:
+            item_id = item["item_id"]
+            item_type = itemType[item_id]
+            type_id = semanticDict[item_type]
+            sizes[type_id].add(item_id)
+    size = np.array(list(map(len, sizes)))
+    if norm:
+        size = size / size.sum()
+    return size
+
+
 def count_conditions(outfits):
     conditions = set()
     for outfit in outfits:
@@ -223,6 +239,12 @@ show_statistic(trainOutfits, "train")
 show_statistic(validOutfits, "valid")
 # %%
 show_statistic(testOutfits, "test")
+
+# %%
+plt.plot(count_cates(trainOutfits, norm=True), label="train")
+plt.plot(count_cates(validOutfits, norm=True), label="valid")
+plt.plot(count_cates(testOutfits, norm=True), label="test")
+plt.legend()
 
 
 # %%
