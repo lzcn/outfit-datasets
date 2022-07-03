@@ -62,7 +62,7 @@ class OutfitLoader(object):
             self.num_fitb_choices = param.num_fitb_choices
         self.datum = getDatum(param)
         self.dataset = getOutfitData(
-            datum=self.datum, param=param.dataset, pos_data=self.pos_data, neg_data=self.neg_data
+            datum=self.datum, param=param.dataset, pos_data=self.pos_data, neg_data=self.neg_data, phase=param.phase
         )
         self.dataloader = DataLoader(
             dataset=self.dataset,

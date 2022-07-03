@@ -39,9 +39,10 @@ class BaseOutfitData(object):
         super().__init_subclass__()
         _dataset_registry[cls.__name__] = cls
 
-    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None):
+    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None, phase="train"):
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.datum = datum
+        self.phase = phase
         self.num_type = utils.infer_num_type(pos_data)
         self.max_size = utils.infer_max_size(pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
@@ -54,10 +55,10 @@ class BaseOutfitData(object):
         self.build()
 
     def build(self):
-        self.logger.info("Generating positive tuples.")
+        self.logger.info(f"Generating {self.phase} positive tuples.")
         self.pos_data = self.pos_generator(self.ini_data)
         self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
-        self.logger.info("Generating negative tuples.")
+        self.logger.info(f"Generating {self.phase} negative tuples.")
         self.neg_data = self.neg_generator(self.pos_data)
         self.logger.info("Negative tuples shape: {}".format(self.neg_data.shape))
         self.max_size = utils.infer_max_size(self.pos_data)
@@ -532,7 +533,7 @@ class ItemTriplet(BaseOutfitData):
 
 
 def getOutfitData(
-    datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None
+    datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None, phase="train"
 ) -> BaseOutfitData:
     """[summary]
 
@@ -541,8 +542,9 @@ def getOutfitData(
         param (DataBuilderParam): dataset parameter
         pos_data (np.ndarray): positive tuples.
         neg_data (np.ndarray, optional): negative tuples. Defaults to None.
+        phase (str): extra phase information for loggging
 
     Returns:
         BaseData: dataset
     """
-    return _dataset_registry[param.data_mode](datum, param, pos_data, neg_data)
+    return _dataset_registry[param.data_mode](datum, param, pos_data, neg_data, phase)
