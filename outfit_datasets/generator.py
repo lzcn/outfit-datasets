@@ -74,6 +74,26 @@ class Fix(Generator):
         return self.data
 
 
+class Sorted(Generator):
+    r"""Sort the oufit by its categories."""
+
+    def __init__(self, **kwargs):
+        super().__init__()
+
+    def run(self, data: np.ndarray = None) -> np.ndarray:
+        """Sort the outfit by its categories.
+
+        Return sorted tuples.
+        """
+        uidx, size, items, cates = utils.split_tuple(data)
+        sorted = []
+        for u, s, i, c in zip(uidx, size, items, cates):
+            # sort category in descending order so that -1 will be nchanged
+            index = np.argsort(c)[::-1]
+            sorted.append(np.hstack([u, s, i[index], c[index]]))
+        return np.vstack(sorted)
+
+
 class Identity(Generator):
     r"""Always return input tuples."""
 
