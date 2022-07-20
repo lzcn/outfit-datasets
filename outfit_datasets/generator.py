@@ -80,7 +80,7 @@ class Sorted(Generator):
     def __init__(self, **kwargs):
         super().__init__()
 
-    def run(self, data: np.ndarray = None) -> np.ndarray:
+    def run(self, data: np.ndarray) -> np.ndarray:
         """Sort the outfit by its categories.
 
         Return sorted tuples.
@@ -292,7 +292,6 @@ class RandomReplace(Generator):
         Returns:
             np.ndarray: negative tuples
         """
-        self.logger.info("Generating tuples with {}.".format(self.__repr__()))
         data = data.copy().repeat(self.ratio, axis=0)
         uids, pos_sizes, pos_items, pos_types = utils.split_tuple(data)
         item_list = utils.get_item_list(data)
@@ -430,15 +429,8 @@ class Retrieval(Generator):
         return f"type_id={self.type_id}"
 
 
-def getGenerator(mode: str, data=None, **kwargs) -> Generator:
+def getGenerator(mode: str = None, data=None, **kwargs) -> Generator:
     r"""Get outfit tuple generator.
-
-    Types of generators:
-
-    - "Fix": return stored tuples.
-    - "Identity": return input.
-    - "RandomMix": return randomly mixed tuples.
-    - "RandomReplace": randomly replace :math:`n` items in outfit.
 
     Args:
         mode (str): type of generator
@@ -452,6 +444,8 @@ def getGenerator(mode: str, data=None, **kwargs) -> Generator:
         [Generator]: generator
 
     """
+    if mode is None:
+        return None
     supported_modes = ",".join(_generator_registry.keys())
     assert mode in _generator_registry, f"Generator mode {mode} is not support. Only {supported_modes} are supported."
     return _generator_registry[mode](data=data, **kwargs)

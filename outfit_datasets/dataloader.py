@@ -73,9 +73,13 @@ class OutfitLoader(object):
             pin_memory=True,
         )
 
+    def next(self):
+        """Generate outfits."""
+        self.dataset.next()
+
     def build(self):
         """Generate outfits."""
-        self.dataset.build()
+        self.dataset.next()
 
     def __len__(self):
         return self.num_batch

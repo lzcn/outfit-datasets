@@ -1,8 +1,11 @@
 import logging
+from multiprocessing import Process, Queue
 from typing import List
 
 import numpy as np
 import torch
+from torchutils import colour
+from tqdm import tqdm
 
 from outfit_datasets.datum import Datum
 from outfit_datasets.generator import Generator, getGenerator
@@ -39,7 +42,14 @@ class BaseOutfitData(object):
         super().__init_subclass__()
         _dataset_registry[cls.__name__] = cls
 
-    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None, phase="train"):
+    def __init__(
+        self,
+        datum: List[Datum],
+        param: OutfitDataParam,
+        pos_data: np.ndarray,
+        neg_data: np.ndarray = None,
+        phase="train",
+    ):
         self.logger = logging.getLogger(__name__ + "." + self.__class__.__name__)
         self.datum = datum
         self.phase = phase
@@ -47,30 +57,84 @@ class BaseOutfitData(object):
         self.max_size = utils.infer_max_size(pos_data)
         self.sections = [1, 1, self.max_size, self.max_size]
         self.param = param
-        self.pos_data = None
-        self.neg_data = None
+        self.pos_data = pos_data
+        self.neg_data = neg_data
         self.ini_data = pos_data
-        self.pos_generator = getGenerator(self.param.pos_mode, data=pos_data, **param.pos_param)
-        self.neg_generator = getGenerator(self.param.neg_mode, data=neg_data, **param.neg_param)
+        self.pos_generator = getGenerator(param.pos_mode, data=pos_data, **param.pos_param)
+        self.neg_generator = getGenerator(param.neg_mode, data=neg_data, **param.neg_param)
+        # create a daemon thread to create the data
+        if param.data_param is None:
+            param.data_param = {}
+        self._num_threads = param.data_param.get("num_threads", 0)
+        self._multiprocessing = self._num_threads > 0
+        self._task_done = False
+        if self._multiprocessing:
+            self._queue = Queue(maxsize=4)
+            self._process = [Process(target=self.produce) for _ in range(self._num_threads)]
+            for p in self._process:
+                p.daemon = True
+            self.start()
         self.build()
 
+    def start(self):
+        """Start producing data with multiprocessing."""
+        for p in self._process:
+            if not p.is_alive():
+                p.start()
+
+    def done(self):
+        """Stop producing data with multiprocessing."""
+        self._task_done = True
+
+    def next(self):
+        """Get tuples for next batch."""
+        if self._multiprocessing:
+            self.consume()
+        else:
+            self.build()
+
+    def consume(self):
+        """Alaternative to build method using multiprocessing."""
+        self.pos_data, self.neg_data = self._queue.get()
+        if self.pos_data is not None:
+            self.logger.info(f"Generated {self.phase} positive tuples {self.pos_data.shape}.")
+            self.num_type = utils.infer_num_type(self.pos_data)
+            self.max_size = utils.infer_max_size(self.pos_data)
+            self.sections = [1, 1, self.max_size, self.max_size]
+        if self.neg_data is not None:
+            self.logger.info(f"Generated {self.phase} negative tuples {self.neg_data.shape}.")
+        self.process()
+
+    def produce(self):
+        """Produce data with multiprocessing."""
+        while not self._task_done:
+            if self._queue.full():
+                continue
+            ini_data = self.ini_data
+            pos_data = self.pos_generator(ini_data) if self.pos_generator is not None else self.pos_data
+            neg_data = self.neg_generator(pos_data) if self.neg_generator is not None else self.neg_data
+            self._queue.put((pos_data, neg_data))
+
     def build(self):
-        self.logger.info(f"Generating {self.phase} positive tuples.")
-        self.pos_data = self.pos_generator(self.ini_data)
-        self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
-        self.logger.info(f"Generating {self.phase} negative tuples.")
-        self.neg_data = self.neg_generator(self.pos_data)
-        self.logger.info("Negative tuples shape: {}".format(self.neg_data.shape))
-        self.max_size = utils.infer_max_size(self.pos_data)
-        self.sections = [1, 1, self.max_size, self.max_size]
+        """Build the dataset."""
+        if self.pos_generator is not None:
+            self.logger.info(f"Generating {self.phase} positive tuples.")
+            self.pos_data = self.pos_generator(self.ini_data)
+            self.logger.info("Positive tuples shape: {}".format(self.pos_data.shape))
+            self.num_type = utils.infer_num_type(self.pos_data)
+            self.max_size = utils.infer_max_size(self.pos_data)
+            self.sections = [1, 1, self.max_size, self.max_size]
+        if self.neg_generator is not None:
+            self.logger.info(f"Generating {self.phase} negative tuples.")
+            self.neg_data = self.neg_generator(self.pos_data)
+            self.logger.info("Negative tuples shape: {}".format(self.neg_data.shape))
         self.process()
 
     def process(self):
-        """Prepare tuples for one epoch."""
         raise NotImplementedError
 
     def names(self, n):
-        pass
+        raise NotImplementedError
 
     def __getitem__(self, n):
         raise NotImplementedError
@@ -542,7 +606,7 @@ def getOutfitData(
         param (DataBuilderParam): dataset parameter
         pos_data (np.ndarray): positive tuples.
         neg_data (np.ndarray, optional): negative tuples. Defaults to None.
-        phase (str): extra phase information for loggging
+        phase (str): extra phase information for logging
 
     Returns:
         BaseData: dataset

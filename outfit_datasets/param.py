@@ -12,10 +12,12 @@ LOGGER = logging.getLogger(__name__)
 class OutfitDataParam(Param):
     #: dataset format
     data_mode = attr.ib(default="PairwiseOutfit")
+    #: dataset param
+    data_param = attr.ib(default=None)
     #: positive tuples generation mode
-    pos_mode = attr.ib(default="Fix")
+    pos_mode = attr.ib(default=None)
     #: negative tuples generation mode
-    neg_mode = attr.ib(default="RandomMix")
+    neg_mode = attr.ib(default=None)
     #: configuration for positive tuples generation
     pos_param = attr.ib(factory=dict)
     #: configuration for negative tuples generation
