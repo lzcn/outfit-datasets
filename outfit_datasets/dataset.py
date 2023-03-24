@@ -87,7 +87,7 @@ class BaseOutfitData(object):
         self._task_done = True
 
     def next(self):
-        """Get tuples for next batch."""
+        """General interface for preparing tuples for next epoch."""
         if self._multiprocessing:
             self.consume()
         else:
@@ -116,7 +116,7 @@ class BaseOutfitData(object):
             self._queue.put((pos_data, neg_data))
 
     def build(self):
-        """Build the dataset."""
+        """Manually build the dataset."""
         if self.pos_generator is not None:
             self.logger.info(f"Generating {self.phase} positive tuples.")
             self.pos_data = self.pos_generator(self.ini_data)
@@ -431,104 +431,82 @@ class OutfitCompletion(PointwiseOutfit):
 
     """
 
+    def generate(self):
+        num_answers = self.param.data_param.get("num_answers", 4)
+        full_sample = self.param.data_param.get("full_sample", False)
+        type_aware = self.param.data_param.get("type_aware", True)
+        ini_data = self.ini_data
+        pos_data = self.pos_generator(ini_data) if self.pos_generator is not None else self.pos_data
+        num_questions = len(pos_data)
+        pos_uidxs, pos_sizes, pos_items, pos_types = utils.split_tuple(pos_data)
+        item_list = utils.get_item_list(pos_data)
+        num_types = utils.infer_num_type(pos_data)
+        pool_items = []
+        pool_types = []
+        query_uidxs = []
+        query_sizes = []
+        query_items = []
+        query_types = []
+        if not self._multiprocessing:
+            pbar = tqdm(desc="Generating {} tuples".format(self.phase), total=num_questions)
+            self.logger.info("Number of incomplete outfits: %s", colour(f"{num_questions:,}"))
+            self.logger.info("Number of choices: %s", colour(f"{num_answers:,}"))
+        for uidx, size, items, types in zip(pos_uidxs, pos_sizes, pos_items, pos_types):
+            replaces = range(size) if full_sample else np.random.choice(size, 1)
+            for replace_index in replaces:
+                sampled_items = items.tolist()
+                sampled_types = types.tolist()
+                target_type = sampled_types[replace_index]
+                target_item = sampled_items[replace_index]
+                ans_items = []
+                ans_types = []
+                for _ in range(num_answers - 1):
+                    ans_item = target_item
+                    ans_type = target_type
+                    while ans_item == target_item:
+                        # random sample an item
+                        if type_aware:
+                            ans_type = target_type
+                            ans_item = np.random.choice(item_list[target_type])
+                        else:
+                            ans_type = np.random.randint(num_types)
+                            ans_item = np.random.choice(item_list[ans_type])
+                    # replace item and type
+                    ans_items.append(ans_item)
+                    ans_types.append(ans_type)
+                # append incomplete outfit
+                query_uidxs.append(uidx)
+                query_sizes.append(size - 1)
+                query_items.append(sampled_items[:replace_index] + sampled_items[replace_index + 1 :])
+                query_types.append(sampled_types[:replace_index] + sampled_types[replace_index + 1 :])
+                # append answer items
+                pool_items.append([target_item] + ans_items)
+                pool_types.append([target_type] + ans_types)
+            if not self._multiprocessing:
+                pbar.update()
+        query_uidxs = np.array(query_uidxs)
+        query_sizes = np.array(query_sizes)
+        query_types = np.array(query_types)
+        query_items = np.array(query_items)
+        pool_items = np.array(pool_items).reshape(-1, num_answers)
+        pool_types = np.array(pool_types).reshape(-1, num_answers)
+        if not self._multiprocessing:
+            self.logger.info("Shape of incomplete outfit {}".format(self.query_items.shape))
+            self.logger.info("Shape of pool outfit {}".format(self.pool_items.shape))
+            pbar.close()
+        return query_uidxs, query_sizes, query_items, query_types, pool_items, pool_types
+
     def produce(self):
         while not self._task_done:
             if self._queue.full():
                 continue
-            num_questions = len(self.pos_data)
-            num_answers = self.param.data_param.get("num_answers", 4)
-            type_aware = self.param.data_param.get("type_aware", True)
-            uidxs, sizes, items, types = utils.split_tuple(self.pos_data)
-            item_list = utils.get_item_list(self.pos_data)
-            num_types = utils.infer_num_type(self.pos_data)
-            pool_items = []
-            pool_types = []
-            query_items = []
-            query_types = []
-            for size, items, types in zip(sizes, items, types):
-                items = items.tolist()
-                types = types.tolist()
-                replace_index = np.random.choice(size)
-                target_type = types[replace_index]
-                target_item = items[replace_index]
-                # get incomplete outfit
-                query_items.append(items[:replace_index] + items[replace_index + 1 :])
-                query_types.append(types[:replace_index] + types[replace_index + 1 :])
-                neg_items = []
-                neg_types = []
-                for _ in range(num_answers - 1):
-                    sampled_item = target_item
-                    sampled_type = target_type
-                    while sampled_item == target_item:
-                        # random sample an item
-                        if type_aware:
-                            sampled_type = target_type
-                            sampled_item = np.random.choice(item_list[target_type])
-                        else:
-                            sampled_type = np.random.randint(num_types)
-                            sampled_item = np.random.choice(item_list[sampled_type])
-                    # replace item and type
-                    neg_items.append(sampled_item)
-                    neg_types.append(sampled_type)
-                pool_items.append([target_item] + neg_items)
-                pool_types.append([target_type] + neg_types)
-            query_types = np.array(query_types)
-            query_items = np.array(query_items)
-            pool_items = np.array(pool_items).reshape(num_questions, -1)
-            pool_types = np.array(pool_types).reshape(num_questions, -1)
-            sizes = sizes - 1
-            self._queue.put((uidxs, sizes, pool_items, pool_types, query_items, query_types))
+            self._queue.put(self.generate())
 
     def consume(self):
-        self.uidxs, self.sizes, self.pool_items, self.pool_types, self.query_items, self.query_types = self._queue.get()
+        self.uidxs, self.sizes, self.query_items, self.query_types, self.pool_items, self.pool_types = self._queue.get()
 
-    def process(self):
-        num_questions = len(self.pos_data)
-        num_answers = self.param.data_param.get("num_answers", 4)
-        type_aware = self.param.data_param.get("type_aware", True)
-        self.logger.info("Number of incomplete outfits: %s", colour(f"{num_questions:,}"))
-        self.logger.info("Number of choices: %s", colour(f"{num_answers:,}"))
-        self.uidxs, sizes, items, types = utils.split_tuple(self.pos_data)
-        item_list = utils.get_item_list(self.pos_data)
-        num_types = utils.infer_num_type(self.pos_data)
-        pool_items = []
-        pool_types = []
-        query_items = []
-        query_types = []
-        for size, items, types in tqdm(zip(sizes, items, types), desc="Generating {} tuples".format(self.phase), total=num_questions):
-            items = items.tolist()
-            types = types.tolist()
-            replace_index = np.random.choice(size)
-            target_type = types[replace_index]
-            target_item = items[replace_index]
-            # get incomplete outfit
-            query_items.append(items[:replace_index] + items[replace_index + 1 :])
-            query_types.append(types[:replace_index] + types[replace_index + 1 :])
-            neg_items = []
-            neg_types = []
-            for _ in range(num_answers - 1):
-                sampled_item = target_item
-                sampled_type = target_type
-                while sampled_item == target_item:
-                    # random sample an item
-                    if type_aware:
-                        sampled_type = target_type
-                        sampled_item = np.random.choice(item_list[target_type])
-                    else:
-                        sampled_type = np.random.randint(num_types)
-                        sampled_item = np.random.choice(item_list[sampled_type])
-                # replace item and type
-                neg_items.append(sampled_item)
-                neg_types.append(sampled_type)
-            pool_items.append([target_item] + neg_items)
-            pool_types.append([target_type] + neg_types)
-        self.query_items = np.array(query_items)
-        self.query_types = np.array(query_types)
-        self.pool_items = np.array(pool_items).reshape(num_questions, -1)
-        self.pool_types = np.array(pool_types).reshape(num_questions, -1)
-        self.sizes = sizes - 1
-        self.logger.info("Shape of incomplete outfit {}".format(self.query_items.shape))
-        self.logger.info("Shape of pool outfit {}".format(self.pool_items.shape))
+    def build(self):
+        self.uidxs, self.sizes, self.query_items, self.query_types, self.pool_items, self.pool_types = self.generate()
 
     def __getitem__(self, n):
         # get pool data
@@ -600,6 +578,54 @@ class Retrieval(PointwiseOutfit):
 class OutlierOutfit(PointwiseOutfit):
     r"""Generate outfits with outlier items."""
 
+    def produce(self):
+        while not self._task_done:
+            if self._queue.full():
+                continue
+            type_aware = self.param.data_param.get("type_aware", True)
+            pos_data = self.pos_generator(self.ini_data) if self.pos_generator is not None else self.pos_data
+            uidxs, sizes, pos_items, pos_types = utils.split_tuple(pos_data)
+            item_list = utils.get_item_list(pos_data)
+            num_types = utils.infer_num_type(pos_data)
+            pos_set = set(map(tuple, pos_items))
+            r_items = []
+            r_types = []
+            r_uidxs = []
+            r_yidxs = []
+            r_sizes = []
+            for uidx, size, items, types in zip(uidxs, sizes, pos_items, pos_types):
+                # replace each item
+                for ridx in range(size):
+                    sampled_types = types.copy()
+                    sampled_items = items.copy()
+                    while tuple(sampled_items) in pos_set:
+                        target_type = sampled_types[ridx]
+                        target_item = sampled_items[ridx]
+                        # random sample an item
+                        sampled_item = target_item
+                        while sampled_item == target_item:
+                            if type_aware:
+                                sampled_type = target_type
+                                sampled_item = np.random.choice(item_list[target_type])
+                            else:
+                                sampled_type = np.random.randint(num_types)
+                                sampled_item = np.random.choice(item_list[sampled_type])
+                        # replace item and type
+                        sampled_items[ridx] = sampled_item
+                        sampled_types[ridx] = sampled_type
+                    r_sizes.append(size)
+                    r_uidxs.append(uidx)
+                    r_yidxs.append(ridx)
+                    r_items.append(sampled_items)
+                    r_types.append(sampled_types)
+            r_items = np.array(r_items)
+            r_types = np.array(r_types)
+            r_sizes = np.array(r_sizes)
+            self._queue.put((r_uidxs, r_sizes, r_items, r_types, r_yidxs))
+
+    def consume(self):
+        self.uidxs, self.sizes, self.items, self.types, self.y = self._queue.get()
+
     def process(self):
         ratio = len(self.neg_data) // len(self.pos_data)
         pos_data = self.pos_data.repeat(ratio, axis=0)
@@ -623,6 +649,7 @@ class OutlierOutfit(PointwiseOutfit):
             name=",".join(self.datum[0].get_key(items, types, self.max_size)),
             cate=cate,
             y=self.y[n],
+            label=1,  # fake label
         )
 
 
@@ -674,9 +701,16 @@ class ItemTriplet(BaseOutfitData):
     Return a triplet (anchor, posi, nega) where posi and nega are from the same category.
     """
 
-    def __init__(self, datum: List[Datum], param: OutfitDataParam, pos_data: np.ndarray, neg_data: np.ndarray = None):
-        super().__init__(datum, param, pos_data, neg_data=neg_data)
-        self.logger.info("Building conditions.")
+    def __init__(
+        self,
+        datum: List[Datum],
+        param: OutfitDataParam,
+        pos_data: np.ndarray,
+        neg_data: np.ndarray = None,
+        phase="train",
+    ):
+        super().__init__(datum, param, pos_data, neg_data, phase)
+        self.logger.info("Building conditions for {} data.".format(phase))
         # build conditions for type-pair
         indx, indy = np.triu_indices(self.num_type, k=1)
         anc_type = np.hstack((indx, indy))

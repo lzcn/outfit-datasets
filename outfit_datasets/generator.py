@@ -109,21 +109,40 @@ class Identity(Generator):
 
 
 class Resample(Generator):
-    r"""Resample a subset of input tuples."""
+    r"""Resample a subset of input tuples.
 
-    def __init__(self, ratio: float = 0.3, **kwargs):
+
+    Args:
+        proportion: The proportion of input tuples to be resampled.
+        num_outfits: The number of outfits to be resampled.
+        sample_once: Whether to sample on each run.
+
+    """
+
+    def __init__(self, proportion: float = 0.3, num_outfits=None, sample_once=False, **kwargs):
         super().__init__()
-        self.ratio = ratio
+        self.proportion = proportion
+        self.num_outfits = num_outfits
+        self.sample_once = sample_once
+        self.data = None
 
     def run(self, data: np.ndarray) -> np.ndarray:
-        num_outfits = int(len(data) * self.ratio)
+        if self.num_outfits is not None:
+            num_outfits = self.num_outfits
+        else:
+            num_outfits = int(len(data) * self.proportion)
+        if self.sample_once and self.data is not None:
+            return self.data
         uidxs = data[:, 0]
         user_data = [data[uidxs == u] for u in range(len(set(uidxs)))]
         sampled = np.vstack([data[np.random.choice(len(data), num_outfits, replace=False)] for data in user_data])
+        self.data = sampled
         return sampled
 
     def extra_repr(self) -> str:
-        return f"ratio={self.ratio}"
+        if self.num_outfits is not None:
+            return f"num_outfits={self.num_outfits}"
+        return f"proportion={self.proportion}"
 
 
 class RandomMix(Generator):
