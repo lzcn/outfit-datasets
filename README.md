@@ -1,6 +1,9 @@
 # A collection for fashion outfit datasets
 
-The API for outfit dataloader is for personal purpose and will change rapidly. I currently use it as a submodule of other repository.
+[![Documentation Status](https://readthedocs.org/projects/outfit-datasets/badge/?version=latest)](https://outfit-datasets.readthedocs.io/en/latest/?badge=latest)
+
+The API for outfit dataloader is for personal purpose and will change rapidly.
+I currently use it as a submodule of other repository.
 
 ## How-to
 
@@ -12,11 +15,10 @@ python setup.py install
 
 2. Go to each sub-folder and run scripts to process the dataset.
 
-   - `ifashion`
    - `iqon-3000`
    - `maryland-polyvore`
    - `polyvore-180`
    - `polyvore-outfits`
    - `polyvore-u`
+   - `ifashion`
    - `shift15m`
-
