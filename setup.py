@@ -48,7 +48,7 @@ setuptools.setup(
     name="outfit-datasets",
     version=VERSION,
     author="Zhi Lu",
-    author_email="zhilu@std.uestc.edu.cn",
+    author_email="zhilu@ustc.edu.cn",
     url="https://github.com/lzcn/outfit-datasets",
     description="A collections of outfit datasets",
     long_description=README,

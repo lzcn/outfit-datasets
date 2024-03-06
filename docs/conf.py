@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.abspath("../"))
 # -- Project information -----------------------------------------------------
 
 project = "Outfit Datasets"
-copyright = "2021, Zhi Lu"
+copyright = "2024, Zhi Lu"
 author = "Zhi Lu"
 
 # The full version, including alpha/beta/rc tags
