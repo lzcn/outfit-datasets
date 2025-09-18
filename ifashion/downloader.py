@@ -4,9 +4,9 @@ import os
 import random
 import time
 from multiprocessing import Pool
+from typing import List, Tuple, Union
 
 import requests
-import torchutils
 from tqdm import tqdm
 
 headers = {
@@ -14,8 +14,45 @@ headers = {
 }
 
 
+def scan_files(
+    path: str = "./", suffix: Union[str, Tuple[str]] = "", recursive: bool = False, relpath: bool = False
+) -> List:
+    """Scan files under path which follows the PEP 471.
+
+    Args:
+        path (str, optional): target path. Defaults to "./".
+        suffix (Union[str, Tuple[str]], optional): folder that ends with given suffix, it can also be a tuple. Defaults to "".
+        recursive (bool, optional): scan files recursively. Defaults to False.
+        relpath (bool, optional): return relative path. Defaults to False.
+
+    Returns:
+        List: list of files
+
+    """
+
+    def scantree(path):
+        for entry in os.scandir(path):
+            if not entry.name.startswith("."):
+                if entry.is_dir(follow_symlinks=False):
+                    yield from scantree(entry.path)
+                else:
+                    yield entry
+
+    def scandir(path):
+        for entry in os.scandir(path):
+            if not entry.name.startswith(".") and entry.is_file():
+                yield entry
+
+    files = []
+    scan = scantree if recursive else scandir
+    for entry in scan(path):
+        if entry.name.endswith(suffix):
+            files.append(os.path.relpath(entry.path, path) if relpath else entry.path)
+    return files
+
+
 def download_image(img_path, img_link, tmp_file):
-    if os.path.exists(img_path):
+    if os.path.exists(img_path) and os.path.getsize(img_path) > 0:
         return
     while True:
         try:
@@ -52,7 +89,7 @@ if __name__ == "__main__":
     else:
         broken_url = []
     broken_url = set(broken_url)
-    downloaded = set(torchutils.files.scan_files(args.image_dir))
+    downloaded = set(scan_files(args.image_dir))
     todownload = []
     item_set = set()
     with open(args.data_file) as f:
