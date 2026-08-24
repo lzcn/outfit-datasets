@@ -77,3 +77,7 @@ If you find this project useful, please consider citing the following papers:
   doi = {10.1109/TMM.2022.3186744}
 }
 ```
+
+## License
+
+MIT.
