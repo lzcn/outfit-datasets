@@ -78,6 +78,8 @@ If you find this project useful, please consider citing the following papers:
 }
 ```
 
+> Refactored with an LLM.
+
 ## License
 
 MIT.
