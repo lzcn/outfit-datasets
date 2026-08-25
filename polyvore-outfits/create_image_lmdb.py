@@ -6,6 +6,7 @@ import lmdb
 import torchutils
 from tqdm import tqdm
 
+"""Create Image LMDB for Polyvore Outfits dataset."""
 if __name__ == "__main__":
     # fmt: off
     parser = argparse.ArgumentParser(description="Make Image LMDB", formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -14,11 +15,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     # fmt: on
     meta_data = torchutils.io.load_json(f"{args.input_dir}/polyvore_item_metadata.json")
-    os.makedirs(args.output_dit, exist_ok=True)
-    env = lmdb.open(args.output_dit, map_size=2**40)
+    os.makedirs(args.output_dir, exist_ok=True)
+    env = lmdb.open(args.output_dir, map_size=2**40)
     with env.begin(write=True) as txn:
         for item_id in tqdm(meta_data.keys(), desc="Processing images"):
             fn = os.path.join(f"{args.input_dir}/images/", "{}.jpg".format(item_id))
             with open(fn, "rb") as f:
-                txn.put(item_id.encode("ascii"), f.read())
+                txn.put(item_id.encode(), f.read())
     env.close()

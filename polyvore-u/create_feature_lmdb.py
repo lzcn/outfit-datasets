@@ -91,7 +91,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Extract feature from given backbone.", formatter_class=argparse.ArgumentDefaultsHelpFormatter
     )
-    parser.add_argument("--image-dir", default="release/image/291x291")
+    parser.add_argument("--image-dir", default="release/images/291x291")
     parser.add_argument("--feature-dir", default="processed/features")
     parser.add_argument("--backbone", default="alexnet", help="Backbone")
     parser.add_argument("--num-workers", default=4, type=int)

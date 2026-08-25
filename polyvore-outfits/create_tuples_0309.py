@@ -12,12 +12,12 @@ import torchutils
 inputDir = "release"
 outputDir = "processed"
 dataSet = "nondisjoint"
-# dataSet = "disjoint"
-minSize = 3
-maxSize = 9
+dataSet = "disjoint"
+minSize = 2
+maxSize = 14
 numCate = 11
 dataDir = os.path.join(inputDir, dataSet)
-saveDir = os.path.join(outputDir, dataSet + "-0309")
+saveDir = os.path.join(outputDir, dataSet + "-0214")
 
 os.makedirs(saveDir, exist_ok=True)
 

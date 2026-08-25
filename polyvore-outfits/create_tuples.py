@@ -61,16 +61,16 @@ itemType = {}
 fineGrained2Semantic = dict()
 
 # set of all semantic categories
-semanticSet = set()
+semanticCategorySet = set()
 for k, v in metaData.items():
-    semanticSet.add(v["semantic_category"])
+    semanticCategorySet.add(v["semantic_category"])
     fineGrained2Semantic[v["category_id"]] = v["semantic_category"]
     itemType[k] = v["semantic_category"]
 
 
 # smenatic category to index id
 semanticDict = dict()
-for cate in sorted(semanticSet):
+for cate in sorted(semanticCategorySet):
     semanticDict[cate] = len(semanticDict)
 
 print("Number of items: {:,}".format(len(metaData)))
@@ -132,7 +132,7 @@ print("Test size: {:,} - {:,}".format(MIN_TEST_SIZE, MAX_TEST_SIZE))
 
 # %%
 # create item list
-itemSet = [set() for _ in range(len(semanticSet))]
+itemSet = [set() for _ in range(len(semanticCategorySet))]
 
 for outfit in allOutfits:
     items = outfit["items"]
@@ -367,6 +367,22 @@ def convert_fitb(phase, one_tuple=False):
 splits = ["train", "valid", "test"]
 for phase in splits:
     pos, neg = convert_fitb(phase)
-    print(f"Number of {phase} questions: {len(neg) // len(pos) + 1}")
-    torchutils.io.save_csv(f"{saveDir}/{phase}_pos_fitb", pos)
-    torchutils.io.save_csv(f"{saveDir}/{phase}_neg_fitb", neg)
+    num_questions = len(pos)
+    num_answers = len(neg) // len(pos) + 1
+    pos_fitb = pos[:, None]
+    neg_fitb = neg.reshape((num_questions, num_answers - 1, -1))
+    # only one item is different
+    valid_tuple = (pos_fitb != neg_fitb).sum(axis=-1) == 1
+    valid = valid_tuple.all(axis=1)
+    pos_fitb = pos_fitb[valid]
+    neg_fitb = neg_fitb[valid]
+    # check only one is ont equal
+    num_questions = len(pos_fitb)
+    # check valid
+    print(f"Number of {phase} answers: {num_answers}")
+    pos = pos_fitb.reshape((num_questions, -1))
+    neg = neg_fitb.reshape((num_questions * (num_answers - 1), -1))
+    torchutils.io.save_csv(f"{saveDir}/{phase}_pos_fitb", pos, True)
+    torchutils.io.save_csv(f"{saveDir}/{phase}_neg_fitb", neg, True)
+
+# %%
